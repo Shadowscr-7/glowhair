@@ -43,9 +43,9 @@ const Navbar = () => {
                 <motion.div
                   animate={{ rotate: [0, 5, -5, 0] }}
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  className="w-8 h-8 bg-gradient-to-br from-glow-400 to-glow-600 rounded-full flex items-center justify-center"
+                  className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-glow-400 to-glow-600 rounded-full flex items-center justify-center"
                 >
-                  <div className="w-4 h-4 bg-white rounded-full relative">
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 bg-white rounded-full relative">
                     <motion.div
                       animate={{ scale: [1, 1.1, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity }}
@@ -54,7 +54,7 @@ const Navbar = () => {
                   </div>
                 </motion.div>
               </div>
-              <h1 className="text-2xl font-display font-bold bg-gradient-to-r from-glow-600 to-glow-400 bg-clip-text text-transparent">
+              <h1 className="text-xl sm:text-2xl font-display font-bold bg-gradient-to-r from-glow-600 to-glow-400 bg-clip-text text-transparent">
                 GlowHair
               </h1>
             </motion.div>
@@ -81,8 +81,8 @@ const Navbar = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center space-x-4">
-            {/* Search */}
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {/* Search - Hidden on mobile, shown on tablet+ */}
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -93,9 +93,9 @@ const Navbar = () => {
 
             {/* User Authentication */}
             {authState.isAuthenticated ? (
-              <div className="flex items-center space-x-4">
-                {/* User Menu */}
-                <div className="relative hidden sm:block">
+              <div className="flex items-center space-x-2 sm:space-x-4">
+                {/* User Menu - Desktop only */}
+                <div className="relative hidden lg:block">
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
@@ -200,8 +200,8 @@ const Navbar = () => {
                   </AnimatePresence>
                 </div>
 
-                {/* Favorites */}
-                <Link href="/favorites">
+                {/* Favorites - Hidden on mobile, shown on tablet+ */}
+                <Link href="/favorites" className="hidden sm:block">
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
@@ -221,12 +221,12 @@ const Navbar = () => {
                 </Link>
               </div>
             ) : (
-              <div className="hidden sm:flex items-center space-x-2">
+              <div className="hidden lg:flex items-center space-x-2">
                 <Link href="/login">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="px-4 py-2 text-glow-600 hover:text-glow-700 font-medium transition-colors"
+                    className="px-3 py-2 text-sm sm:px-4 sm:text-base text-glow-600 hover:text-glow-700 font-medium transition-colors"
                   >
                     Iniciar Sesión
                   </motion.button>
@@ -235,7 +235,7 @@ const Navbar = () => {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="px-4 py-2 bg-gradient-to-r from-glow-600 to-glow-500 text-white rounded-lg font-medium hover:from-glow-700 hover:to-glow-600 transition-all duration-200"
+                    className="px-3 py-2 text-sm sm:px-4 sm:text-base bg-gradient-to-r from-glow-600 to-glow-500 text-white rounded-lg font-medium hover:from-glow-700 hover:to-glow-600 transition-all duration-200"
                   >
                     Registrarse
                   </motion.button>
@@ -267,7 +267,7 @@ const Navbar = () => {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 text-gray-600 hover:text-glow-600 transition-colors duration-200 md:hidden"
+              className="p-2 text-gray-600 hover:text-glow-600 transition-colors duration-200 lg:hidden"
             >
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </motion.button>
@@ -283,9 +283,22 @@ const Navbar = () => {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
-            className="md:hidden bg-white border-t border-glow-200/30"
+            className="lg:hidden bg-white border-t border-glow-200/30 shadow-lg"
           >
-            <div className="px-4 py-4 space-y-4">
+            <div className="px-4 py-4 space-y-4 max-h-screen overflow-y-auto">
+              {/* Search Bar Mobile */}
+              <div className="sm:hidden">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Buscar productos..."
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Navigation Links */}
               {navItems.map((item, index) => (
                 <Link key={item.name} href={item.href}>
                   <motion.div
@@ -293,7 +306,7 @@ const Navbar = () => {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
                     onClick={() => setIsMenuOpen(false)}
-                    className="block text-gray-700 hover:text-glow-600 transition-colors duration-200 font-medium py-2 cursor-pointer"
+                    className="block text-gray-700 hover:text-glow-600 transition-colors duration-200 font-medium py-3 px-2 rounded-lg hover:bg-glow-50 cursor-pointer"
                   >
                     {item.name}
                   </motion.div>
@@ -309,11 +322,11 @@ const Navbar = () => {
                         <img 
                           src={authState.user.avatar} 
                           alt={authState.user.firstName}
-                          className="w-10 h-10 rounded-full"
+                          className="w-12 h-12 rounded-full"
                         />
                       ) : (
-                        <div className="w-10 h-10 bg-gradient-to-br from-glow-400 to-glow-600 rounded-full flex items-center justify-center">
-                          <User size={20} className="text-white" />
+                        <div className="w-12 h-12 bg-gradient-to-br from-glow-400 to-glow-600 rounded-full flex items-center justify-center">
+                          <User size={24} className="text-white" />
                         </div>
                       )}
                       <div>
@@ -328,9 +341,9 @@ const Navbar = () => {
                       <motion.button
                         whileHover={{ backgroundColor: "#f8fafc" }}
                         onClick={() => setIsMenuOpen(false)}
-                        className="w-full flex items-center space-x-3 px-2 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                        className="w-full flex items-center space-x-3 px-3 py-4 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
                       >
-                        <User size={18} />
+                        <User size={20} />
                         <span>Mi Perfil</span>
                       </motion.button>
                     </Link>
@@ -339,15 +352,40 @@ const Navbar = () => {
                       <motion.button
                         whileHover={{ backgroundColor: "#f8fafc" }}
                         onClick={() => setIsMenuOpen(false)}
-                        className="w-full flex items-center space-x-3 px-2 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                        className="w-full flex items-center space-x-3 px-3 py-4 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
                       >
-                        <Heart size={18} />
+                        <Heart size={20} />
                         <span>Mis Favoritos</span>
                         {authState.favorites.length > 0 && (
-                          <span className="ml-auto bg-glow-500 text-white text-xs rounded-full px-2 py-0.5">
+                          <span className="ml-auto bg-glow-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
                             {authState.favorites.length}
                           </span>
                         )}
+                      </motion.button>
+                    </Link>
+
+                    {/* Admin Menu - Only for admin users - Mobile */}
+                    {authState.user?.role === "admin" && (
+                      <Link href="/admin">
+                        <motion.button
+                          whileHover={{ backgroundColor: "#f8fafc" }}
+                          onClick={() => setIsMenuOpen(false)}
+                          className="w-full flex items-center space-x-3 px-3 py-4 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                        >
+                          <Shield size={20} />
+                          <span>Administración</span>
+                        </motion.button>
+                      </Link>
+                    )}
+                    
+                    <Link href="/settings">
+                      <motion.button
+                        whileHover={{ backgroundColor: "#f8fafc" }}
+                        onClick={() => setIsMenuOpen(false)}
+                        className="w-full flex items-center space-x-3 px-3 py-4 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                      >
+                        <Settings size={20} />
+                        <span>Configuración</span>
                       </motion.button>
                     </Link>
                     
@@ -357,9 +395,9 @@ const Navbar = () => {
                         logout();
                         setIsMenuOpen(false);
                       }}
-                      className="w-full flex items-center space-x-3 px-2 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="w-full flex items-center space-x-3 px-3 py-4 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     >
-                      <LogOut size={18} />
+                      <LogOut size={20} />
                       <span>Cerrar Sesión</span>
                     </motion.button>
                   </div>
@@ -369,7 +407,7 @@ const Navbar = () => {
                       <motion.button
                         whileHover={{ backgroundColor: "#f8fafc" }}
                         onClick={() => setIsMenuOpen(false)}
-                        className="w-full py-3 text-glow-600 hover:bg-gray-50 transition-colors duration-200 rounded-lg font-medium"
+                        className="w-full py-3 px-4 text-glow-600 hover:bg-glow-50 transition-colors duration-200 rounded-lg font-medium border border-glow-200"
                       >
                         Iniciar Sesión
                       </motion.button>
@@ -379,7 +417,7 @@ const Navbar = () => {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setIsMenuOpen(false)}
-                        className="w-full py-3 bg-gradient-to-r from-glow-600 to-glow-500 text-white rounded-lg font-medium hover:from-glow-700 hover:to-glow-600 transition-all duration-200"
+                        className="w-full py-3 px-4 bg-gradient-to-r from-glow-600 to-glow-500 text-white rounded-lg font-medium hover:from-glow-700 hover:to-glow-600 transition-all duration-200 shadow-lg"
                       >
                         Registrarse
                       </motion.button>

@@ -47,14 +47,26 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       {/* Main Navbar */}
       <Navbar />
       
-      <div className="flex">
+      <div className="flex pt-16"> {/* Add padding-top for fixed navbar */}
+        {/* Mobile Hamburger Button */}
+        <div className="lg:hidden fixed top-20 left-4 z-50">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 bg-white rounded-lg shadow-lg border border-gray-200 text-gray-600 hover:text-glow-600 transition-colors"
+          >
+            <Menu size={20} />
+          </motion.button>
+        </div>
+
         {/* Mobile sidebar backdrop */}
         {sidebarOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-gray-600 bg-opacity-75 z-40 lg:hidden top-16"
+            className="fixed inset-0 bg-gray-600 bg-opacity-75 z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
@@ -65,38 +77,39 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           animate={{ 
             x: sidebarOpen ? 0 : -300 
           }}
-          className={`fixed inset-y-0 left-0 top-16 z-50 w-64 bg-white shadow-xl lg:translate-x-0 lg:static lg:inset-0 transition-transform duration-300 ease-in-out lg:transition-none lg:w-64 lg:flex-shrink-0`}
+          className={`fixed inset-y-0 left-0 top-0 z-50 w-72 bg-white shadow-xl lg:translate-x-0 lg:static lg:inset-0 transition-transform duration-300 ease-in-out lg:transition-none lg:w-64 lg:flex-shrink-0`}
         >
-          <div className="flex flex-col h-full">
+          <div className="flex flex-col h-full pt-16"> {/* Add padding-top for navbar space */}
             {/* Admin Header */}
-            <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
+            <div className="flex items-center justify-between h-16 px-4 sm:px-6 border-b border-gray-200">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-gradient-to-br from-glow-400 to-glow-600 rounded-lg flex items-center justify-center">
                   <BarChart3 className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-lg font-semibold text-gray-900">
+                <span className="text-base sm:text-lg font-semibold text-gray-900">
                   Admin Panel
                 </span>
               </div>
               
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="lg:hidden p-1 rounded-md text-gray-400 hover:text-gray-500"
+                className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 px-6 py-6 space-y-2">
+            <nav className="flex-1 px-3 sm:px-6 py-4 sm:py-6 space-y-1 sm:space-y-2 overflow-y-auto">
               {/* Back to Site */}
               <Link href="/">
                 <motion.div
                   whileHover={{ backgroundColor: "#f3f4f6" }}
-                  className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                  onClick={() => setSidebarOpen(false)}
+                  className="flex items-center px-3 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
                 >
-                  <Home className="mr-3 h-5 w-5" />
-                  Volver a la Tienda
+                  <Home className="mr-3 h-5 w-5 flex-shrink-0" />
+                  <span className="truncate">Volver a la Tienda</span>
                 </motion.div>
               </Link>
 

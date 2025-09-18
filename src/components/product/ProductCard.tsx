@@ -143,33 +143,32 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
       </motion.button>
 
       {/* Product Image */}
-      <div className="relative h-48 bg-gradient-to-br from-glow-50 to-glow-100 flex items-center justify-center p-8">
+      <div className="relative h-40 sm:h-48 bg-gradient-to-br from-glow-50 to-glow-100 flex items-center justify-center p-6 sm:p-8">
         <motion.div
           animate={{ 
             scale: isHovered ? 1.1 : 1,
             rotate: isHovered ? 5 : 0
           }}
           transition={{ duration: 0.3 }}
-          className="w-20 h-20"
+          className="w-16 h-16 sm:w-20 sm:h-20"
         >
           {product.image}
         </motion.div>
 
-        {/* Quick Actions - Appear on Hover */}
+        {/* Quick Actions - Mobile: Always visible, Desktop: On hover */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ 
-            opacity: isHovered ? 1 : 0,
-            y: isHovered ? 0 : 10
+            opacity: 1, // Always visible on mobile
+            y: 0
           }}
-          transition={{ duration: 0.2 }}
-          className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex gap-2"
+          className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200"
         >
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={handleViewDetails}
-            className="w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-glow-500 hover:text-white transition-all duration-200"
+            className="w-8 h-8 sm:w-8 sm:h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-glow-500 hover:text-white transition-all duration-200"
           >
             <Eye size={14} />
           </motion.button>
@@ -178,7 +177,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
             whileTap={{ scale: 0.9 }}
             onClick={handleAddToCart}
             disabled={isAddingToCart}
-            className="w-8 h-8 bg-glow-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-glow-600 transition-all duration-200 disabled:opacity-50"
+            className="w-8 h-8 sm:w-8 sm:h-8 bg-glow-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-glow-600 transition-all duration-200 disabled:opacity-50"
           >
             {isAddingToCart ? (
               <motion.div
@@ -194,13 +193,13 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
       </div>
 
       {/* Product Info */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {/* Category */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="text-sm text-glow-600 font-medium mb-2"
+          className="text-xs sm:text-sm text-glow-600 font-medium mb-1 sm:mb-2"
         >
           {product.category}
         </motion.p>
@@ -210,18 +209,18 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-glow-700 transition-colors duration-200"
+          className="font-semibold text-sm sm:text-base text-gray-900 mb-2 line-clamp-2 group-hover:text-glow-700 transition-colors duration-200"
         >
           {product.name}
         </motion.h3>
 
-        {/* Description */}
+        {/* Description - Hidden on mobile */}
         {product.description && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="text-sm text-gray-600 mb-3 line-clamp-2"
+            className="hidden sm:block text-sm text-gray-600 mb-3 line-clamp-2"
           >
             {product.description}
           </motion.p>
@@ -232,13 +231,13 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="flex items-center gap-2 mb-3"
+          className="flex items-center gap-2 mb-2 sm:mb-3"
         >
           <div className="flex items-center">
             {[...Array(5)].map((_, i) => (
               <Star
                 key={i}
-                size={14}
+                size={12}
                 className={cn(
                   "transition-colors duration-200",
                   i < Math.floor(product.rating)
@@ -248,7 +247,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
               />
             ))}
           </div>
-          <span className="text-sm text-gray-600">
+          <span className="text-xs sm:text-sm text-gray-600">
             {product.rating} ({product.reviewCount})
           </span>
         </motion.div>
@@ -258,14 +257,14 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="flex items-center justify-between"
+          className="flex items-center justify-between mb-3 sm:mb-0"
         >
           <div className="flex items-center gap-2">
-            <span className="text-xl font-bold text-gray-900">
+            <span className="text-lg sm:text-xl font-bold text-gray-900">
               ${product.price.toFixed(2)}
             </span>
             {product.originalPrice && (
-              <span className="text-sm text-gray-500 line-through">
+              <span className="text-xs sm:text-sm text-gray-500 line-through">
                 ${product.originalPrice.toFixed(2)}
               </span>
             )}
@@ -281,18 +280,19 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
           transition={{ delay: 0.6 }}
           onClick={handleAddToCart}
           disabled={isAddingToCart}
-          className="w-full mt-4 bg-gradient-to-r from-glow-600 to-glow-500 text-white py-3 px-4 rounded-xl font-medium hover:from-glow-700 hover:to-glow-600 transition-all duration-200 flex items-center justify-center gap-2 group disabled:opacity-50"
+          className="w-full mt-3 sm:mt-4 bg-gradient-to-r from-glow-600 to-glow-500 text-white py-2.5 sm:py-3 px-4 rounded-xl font-medium hover:from-glow-700 hover:to-glow-600 transition-all duration-200 flex items-center justify-center gap-2 group disabled:opacity-50 text-sm sm:text-base"
         >
           {isAddingToCart ? (
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+              className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full"
             />
           ) : (
             <>
-              <ShoppingCart size={18} className="group-hover:scale-110 transition-transform duration-200" />
-              Agregar al Carrito
+              <ShoppingCart size={16} className="sm:w-[18px] sm:h-[18px] group-hover:scale-110 transition-transform duration-200" />
+              <span className="hidden sm:inline">Agregar al Carrito</span>
+              <span className="sm:hidden">Agregar</span>
             </>
           )}
         </motion.button>

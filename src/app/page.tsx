@@ -82,7 +82,7 @@ export default function Home() {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="relative pt-16 min-h-screen flex items-center justify-center overflow-hidden">
+      <section className="relative pt-16 min-h-[80vh] sm:min-h-screen flex items-center justify-center overflow-hidden">
         {/* Background Gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-glow-50 via-white to-glow-100" />
         
@@ -97,7 +97,7 @@ export default function Home() {
             repeat: Infinity, 
             ease: "linear" 
           }}
-          className="absolute top-20 right-20 w-32 h-32 bg-gradient-to-br from-glow-200 to-glow-300 rounded-full opacity-20 blur-xl"
+          className="absolute top-20 right-10 sm:right-20 w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-br from-glow-200 to-glow-300 rounded-full opacity-20 blur-xl"
         />
         
         <motion.div
@@ -110,7 +110,7 @@ export default function Home() {
             repeat: Infinity, 
             ease: "linear" 
           }}
-          className="absolute bottom-20 left-20 w-24 h-24 bg-gradient-to-br from-glow-300 to-glow-400 rounded-full opacity-15 blur-xl"
+          className="absolute bottom-20 left-10 sm:left-20 w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-br from-glow-300 to-glow-400 rounded-full opacity-15 blur-xl"
         />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -122,12 +122,12 @@ export default function Home() {
             <motion.div
               animate={{ rotate: [0, 5, -5, 0] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="flex justify-center mb-6"
+              className="flex justify-center mb-4 sm:mb-6"
             >
-              <Sparkles className="w-16 h-16 text-glow-500" />
+              <Sparkles className="w-12 h-12 sm:w-16 sm:h-16 text-glow-500" />
             </motion.div>
             
-            <h1 className="text-5xl md:text-7xl font-display font-bold mb-6">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-display font-bold mb-4 sm:mb-6">
               <span className="bg-gradient-to-r from-glow-600 via-glow-500 to-glow-400 bg-clip-text text-transparent">
                 GlowHair
               </span>
@@ -137,7 +137,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.8 }}
-              className="text-xl md:text-2xl text-gray-700 mb-8 max-w-3xl mx-auto"
+              className="text-lg sm:text-xl md:text-2xl text-gray-700 mb-6 sm:mb-8 max-w-3xl mx-auto px-2"
             >
               Descubre la belleza natural de tu cabello con productos premium 
               diseñados para nutrir, reparar y realzar tu melena.
@@ -147,13 +147,13 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.8 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center px-4"
             >
               <motion.a
                 href="/productos"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-gradient-to-r from-glow-600 to-glow-500 text-white px-8 py-4 rounded-full font-semibold text-lg flex items-center gap-2 hover:from-glow-700 hover:to-glow-600 transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="w-full sm:w-auto bg-gradient-to-r from-glow-600 to-glow-500 text-white px-6 sm:px-8 py-4 rounded-full font-semibold text-base sm:text-lg flex items-center justify-center gap-2 hover:from-glow-700 hover:to-glow-600 transition-all duration-200 shadow-lg hover:shadow-xl"
               >
                 Explorar Productos
                 <ArrowRight className="w-5 h-5" />
@@ -162,7 +162,7 @@ export default function Home() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="border-2 border-glow-500 text-glow-600 px-8 py-4 rounded-full font-semibold text-lg hover:bg-glow-50 transition-all duration-200"
+                className="w-full sm:w-auto border-2 border-glow-500 text-glow-600 px-6 sm:px-8 py-4 rounded-full font-semibold text-base sm:text-lg hover:bg-glow-50 transition-all duration-200"
               >
                 Ver Ofertas
               </motion.button>
@@ -172,37 +172,37 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-12 sm:py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-4xl font-display font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl sm:text-4xl font-display font-bold text-gray-900 mb-4">
               ¿Por qué elegir <span className="text-glow-600">GlowHair</span>?
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto px-2">
               Compromiso con la calidad, ingredientes naturales y resultados visibles
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
             {[
               {
-                icon: <Award className="w-8 h-8" />,
+                icon: <Award className="w-6 h-6 sm:w-8 sm:h-8" />,
                 title: "Calidad Premium",
                 description: "Productos formulados con los mejores ingredientes naturales y tecnología avanzada."
               },
               {
-                icon: <Sparkles className="w-8 h-8" />,
+                icon: <Sparkles className="w-6 h-6 sm:w-8 sm:h-8" />,
                 title: "Resultados Visibles",
                 description: "Transformación real desde la primera aplicación, cabello más saludable y brillante."
               },
               {
-                icon: <Truck className="w-8 h-8" />,
+                icon: <Truck className="w-6 h-6 sm:w-8 sm:h-8" />,
                 title: "Envío Gratis",
                 description: "Entrega gratuita en compras superiores a $50. Rápido y seguro a todo el país."
               }
@@ -214,15 +214,15 @@ export default function Home() {
                 transition={{ delay: index * 0.2, duration: 0.8 }}
                 viewport={{ once: true }}
                 whileHover={{ y: -5 }}
-                className="text-center p-8 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
+                className="text-center p-6 sm:p-8 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
               >
-                <div className="flex justify-center mb-4 text-glow-500">
+                <div className="flex justify-center mb-3 sm:mb-4 text-glow-500">
                   {feature.icon}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2 sm:mb-3">
                   {feature.title}
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                   {feature.description}
                 </p>
               </motion.div>
@@ -232,24 +232,24 @@ export default function Home() {
       </section>
 
       {/* Products Section */}
-      <section className="py-20">
+      <section className="py-12 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-4xl font-display font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl sm:text-4xl font-display font-bold text-gray-900 mb-4">
               Productos <span className="text-glow-600">Destacados</span>
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto px-2">
               Descubre nuestra selección de productos más populares y efectivos
             </p>
           </motion.div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {sampleProducts.map((product, index) => (
               <motion.div
                 key={product.id}
@@ -268,12 +268,12 @@ export default function Home() {
             whileInView={{ opacity: 1 }}
             transition={{ delay: 0.6, duration: 0.8 }}
             viewport={{ once: true }}
-            className="text-center mt-12"
+            className="text-center mt-8 sm:mt-12 px-4"
           >
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-gradient-to-r from-glow-600 to-glow-500 text-white px-8 py-4 rounded-full font-semibold text-lg flex items-center gap-2 mx-auto hover:from-glow-700 hover:to-glow-600 transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="w-full sm:w-auto bg-gradient-to-r from-glow-600 to-glow-500 text-white px-6 sm:px-8 py-4 rounded-full font-semibold text-base sm:text-lg flex items-center justify-center gap-2 mx-auto hover:from-glow-700 hover:to-glow-600 transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               Ver Todos los Productos
               <ArrowRight className="w-5 h-5" />
@@ -283,7 +283,7 @@ export default function Home() {
       </section>
 
       {/* Newsletter Section */}
-      <section className="py-20 bg-gradient-to-r from-glow-600 to-glow-500">
+      <section className="py-12 sm:py-20 bg-gradient-to-r from-glow-600 to-glow-500">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -291,23 +291,23 @@ export default function Home() {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl font-display font-bold text-white mb-4">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-white mb-4">
               Mantente al día con GlowHair
             </h2>
-            <p className="text-xl text-glow-100 mb-8">
+            <p className="text-base sm:text-lg md:text-xl text-glow-100 mb-6 sm:mb-8 px-2">
               Recibe consejos de cuidado capilar y ofertas exclusivas
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 max-w-md mx-auto px-4">
               <input
                 type="email"
                 placeholder="Tu email"
-                className="flex-1 px-6 py-3 rounded-full text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white"
+                className="flex-1 px-4 sm:px-6 py-3 rounded-full text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white text-sm sm:text-base"
               />
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white text-glow-600 px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition-colors duration-200"
+                className="bg-white text-glow-600 px-6 sm:px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition-colors duration-200 text-sm sm:text-base"
               >
                 Suscribirse
               </motion.button>

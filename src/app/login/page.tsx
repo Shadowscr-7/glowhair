@@ -63,30 +63,30 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       
-      <div className="pt-20 pb-12">
+      <div className="pt-16 sm:pt-20 pb-12">
         <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
+            className="text-center mb-6 sm:mb-8"
           >
             <button
               onClick={() => router.back()}
-              className="flex items-center gap-2 text-glow-600 hover:text-glow-700 transition-colors mb-6 mx-auto"
+              className="flex items-center gap-2 text-glow-600 hover:text-glow-700 transition-colors mb-4 sm:mb-6 mx-auto text-sm sm:text-base"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
               <span>Volver</span>
             </button>
 
-            <div className="w-16 h-16 bg-gradient-to-r from-glow-600 to-glow-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Lock className="w-8 h-8 text-white" />
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-glow-600 to-glow-500 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+              <Lock className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
             </div>
 
-            <h1 className="text-3xl font-display font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-gray-900 mb-2">
               Iniciar Sesión
             </h1>
-            <p className="text-gray-600">
+            <p className="text-sm sm:text-base text-gray-600 px-2">
               Accede a tu cuenta para una experiencia personalizada
             </p>
           </motion.div>
@@ -96,7 +96,7 @@ export default function LoginPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl shadow-lg p-8"
+            className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-6 sm:p-8"
           >
             {errors.general && (
               <motion.div
