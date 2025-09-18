@@ -6,10 +6,33 @@
 }
 
 @theme inline {
+  --color-glow-light: #f3e8ff;
+  --color-glow-100: #e9d5ff;
+  --color-glow-200: #d8b4fe;
+  --color-glow-300: #c084fc;
+  --color-glow-400: #a855f7;
+  --color-glow-500: #9333ea;
+  --color-glow-600: #7c3aed;
+  --color-glow-700: #6d28d9;
+  --color-glow-800: #5b21b6;
+  --color-glow-900: #4c1d95;
+  --color-glow-950: #2e1065;
+  
+  --color-primary: var(--color-glow-600);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--color-glow-100);
+  --color-secondary-foreground: var(--color-glow-900);
+  --color-accent: var(--color-glow-300);
+  --color-accent-foreground: var(--color-glow-900);
+  
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted: #f8fafc;
+  --color-muted-foreground: #64748b;
+  --color-border: #e2e8f0;
+  
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +45,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
