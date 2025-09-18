@@ -18,7 +18,7 @@ import {
 import Navbar from "@/components/layout/Navbar";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
-import { ShampooIcon, ConditionerIcon, MaskIcon, SerumIcon, OilIcon, SprayIcon } from "@/components/ui/ProductIcons";
+import { ShampooIcon, ConditionerIcon } from "@/components/ui/ProductIcons";
 
 // Sample product data (in a real app, this would come from an API)
 const getProductData = (id: string) => {

@@ -1,4 +1,4 @@
-export const ShampooIcon = ({ className = "w-6 h-6", color = "currentColor" }) => (
+export const ShampooIcon = ({ className = "w-6 h-6" }) => (
   <svg 
     className={className}
     viewBox="0 0 100 100" 
@@ -46,7 +46,7 @@ export const ShampooIcon = ({ className = "w-6 h-6", color = "currentColor" }) =
   </svg>
 );
 
-export const ConditionerIcon = ({ className = "w-6 h-6", color = "currentColor" }) => (
+export const ConditionerIcon = ({ className = "w-6 h-6" }) => (
   <svg 
     className={className}
     viewBox="0 0 100 100" 
@@ -86,7 +86,7 @@ export const ConditionerIcon = ({ className = "w-6 h-6", color = "currentColor" 
   </svg>
 );
 
-export const MaskIcon = ({ className = "w-6 h-6", color = "currentColor" }) => (
+export const MaskIcon = ({ className = "w-6 h-6" }) => (
   <svg 
     className={className}
     viewBox="0 0 100 100" 
@@ -144,7 +144,7 @@ export const MaskIcon = ({ className = "w-6 h-6", color = "currentColor" }) => (
   </svg>
 );
 
-export const SerumIcon = ({ className = "w-6 h-6", color = "currentColor" }) => (
+export const SerumIcon = ({ className = "w-6 h-6" }) => (
   <svg 
     className={className}
     viewBox="0 0 100 100" 
@@ -204,7 +204,7 @@ export const SerumIcon = ({ className = "w-6 h-6", color = "currentColor" }) => 
   </svg>
 );
 
-export const OilIcon = ({ className = "w-6 h-6", color = "currentColor" }) => (
+export const OilIcon = ({ className = "w-6 h-6" }) => (
   <svg 
     className={className}
     viewBox="0 0 100 100" 
@@ -260,7 +260,7 @@ export const OilIcon = ({ className = "w-6 h-6", color = "currentColor" }) => (
   </svg>
 );
 
-export const SprayIcon = ({ className = "w-6 h-6", color = "currentColor" }) => (
+export const SprayIcon = ({ className = "w-6 h-6" }) => (
   <svg 
     className={className}
     viewBox="0 0 100 100" 

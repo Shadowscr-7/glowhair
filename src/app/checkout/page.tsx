@@ -9,8 +9,6 @@ import {
   Lock, 
   MapPin, 
   User, 
-  Mail, 
-  Phone,
   Truck,
   Calendar,
   Check,
