@@ -224,6 +224,74 @@ export const productService = {
         error: error instanceof Error ? error.message : 'Error en la búsqueda'
       };
     }
+  },
+
+  // Crear nuevo producto
+  async createProduct(productData: Partial<Product>): Promise<ApiResponse<Product>> {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .insert(productData)
+        .select(`
+          *,
+          category:categories(id, name),
+          brand:brands(id, name)
+        `)
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error al crear producto'
+      };
+    }
+  },
+
+  // Actualizar producto
+  async updateProduct(id: string, updates: Partial<Product>): Promise<ApiResponse<Product>> {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .update(updates)
+        .eq('id', id)
+        .select(`
+          *,
+          category:categories(id, name),
+          brand:brands(id, name)
+        `)
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error al actualizar producto'
+      };
+    }
+  },
+
+  // Eliminar producto (soft delete)
+  async deleteProduct(id: string): Promise<ApiResponse<void>> {
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error al eliminar producto'
+      };
+    }
   }
 };
 
