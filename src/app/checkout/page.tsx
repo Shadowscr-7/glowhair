@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { 
@@ -12,10 +12,14 @@ import {
   Truck,
   Calendar,
   Check,
-  DollarSign
+  DollarSign,
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import { useCart } from "@/context/CartContext";
+import { cartAPI, ordersAPI } from "@/lib/api";
+import { useAuth } from "@/context/NewAuthContext";
 
 interface FormData {
   // Personal Info
@@ -46,9 +50,19 @@ interface FormData {
 export default function CheckoutPage() {
   const router = useRouter();
   const { state, clearCart } = useCart();
+  useAuth(); // Ensure user is authenticated
   const [currentStep, setCurrentStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totals, setTotals] = useState({
+    subtotal: 0,
+    shipping: 0,
+    tax: 0,
+    total: 0
+  });
+  const [orderId, setOrderId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
@@ -69,10 +83,39 @@ export default function CheckoutPage() {
   });
   const [formErrors, setFormErrors] = useState<Partial<FormData>>({});
 
-  const subtotal = state.total;
-  const shipping = subtotal >= 50 ? 0 : 9.99;
-  const tax = subtotal * 0.1; // 10% tax
-  const total = subtotal + shipping + tax;
+  // Fetch cart totals
+  const fetchTotals = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const totalsData = await cartAPI.getTotal();
+      setTotals({
+        subtotal: totalsData.subtotal,
+        shipping: totalsData.shipping,
+        tax: totalsData.tax,
+        total: totalsData.total
+      });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al cargar totales';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (state.items.length > 0) {
+      fetchTotals();
+    } else {
+      setLoading(false);
+    }
+  }, [state.items.length, fetchTotals]);
+
+  const subtotal = totals.subtotal;
+  const shipping = totals.shipping;
+  const tax = totals.tax;
+  const total = totals.total;
 
   const steps = [
     { id: 1, title: "Información Personal", icon: User },
@@ -133,13 +176,23 @@ export default function CheckoutPage() {
     setIsProcessing(true);
     
     try {
+      // Prepare order data
+      const orderData = {
+        shipping_address: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}, ${formData.country}`,
+        billing_address: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}, ${formData.country}`,
+        payment_method: formData.paymentMethod === "card" ? "credit_card" : "mercadopago",
+        notes: `Cliente: ${formData.firstName} ${formData.lastName} | Email: ${formData.email} | Tel: ${formData.phone}`
+      };
+
+      // Create order via API
+      const order = await ordersAPI.create(orderData);
+      setOrderId(order.id);
+      
       if (formData.paymentMethod === "mercadopago") {
         // Simulate MercadoPago redirection
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        window.open("https://www.mercadopago.com.ar/checkout/v1/redirect", "_blank");
-      } else {
-        // Simulate card payment processing
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        // In production, redirect to real MercadoPago URL with order ID
+        // window.location.href = `https://www.mercadopago.com.ar/checkout/${order.id}`;
       }
       
       // Show success
@@ -155,10 +208,11 @@ export default function CheckoutPage() {
     } catch (error) {
       setIsProcessing(false);
       console.error("Payment error:", error);
+      alert('Error al procesar el pago. Por favor intenta de nuevo.');
     }
   };
 
-  if (state.items.length === 0) {
+  if (state.items.length === 0 && !loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
@@ -183,6 +237,51 @@ export default function CheckoutPage() {
               Explorar Productos
             </motion.button>
           </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="pt-20 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 text-glow-600 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Preparando checkout...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="pt-20 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center max-w-md mx-auto px-4">
+            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Error al cargar checkout</h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={fetchTotals}
+                className="bg-glow-600 text-white px-6 py-3 rounded-lg hover:bg-glow-700 transition-colors"
+              >
+                Reintentar
+              </button>
+              <button
+                onClick={() => router.push('/carrito')}
+                className="bg-white text-gray-700 px-6 py-3 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+              >
+                Volver al Carrito
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -213,6 +312,13 @@ export default function CheckoutPage() {
             <p className="text-gray-600 mb-6">
               Tu pedido por <span className="font-semibold">${total.toFixed(2)}</span> ha sido procesado exitosamente.
             </p>
+            {orderId && (
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <p className="text-sm text-gray-600">
+                  <span className="font-semibold">Número de pedido:</span> #{orderId}
+                </p>
+              </div>
+            )}
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <p className="text-sm text-gray-600">
                 Recibirás un email de confirmación en breve con los detalles del envío.
