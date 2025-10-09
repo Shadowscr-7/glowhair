@@ -121,12 +121,18 @@ export default function RegisterPage() {
     
     if (!validateForm()) return;
 
-    const success = await register(formData);
+    const userData = {
+      first_name: formData.firstName,
+      last_name: formData.lastName,
+      hair_type: formData.hairType.join(", "),
+    };
+
+    const result = await register(formData.email, formData.password, userData);
     
-    if (success) {
+    if (result.success) {
       router.push("/");
     } else {
-      setErrors({ general: "Error al crear la cuenta. Inténtalo de nuevo." });
+      setErrors({ general: result.error || "Error al crear la cuenta. Inténtalo de nuevo." });
     }
   };
 
