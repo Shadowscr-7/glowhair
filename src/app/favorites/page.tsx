@@ -1,37 +1,71 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Heart, ShoppingCart } from "lucide-react";
+import { Heart, ShoppingCart, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
-import { useAuth } from "@/context/NewAuthContext";
-import { useCart } from "@/context/CartContext";
-import { mockProducts, Product } from "@/data/products";
+import { favoritesAPI, cartAPI, type Favorite } from "@/lib/api";
 
 const FavoritesPage = () => {
-  const { state: authState, toggleFavorite } = useAuth();
-  const { addItem } = useCart();
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [addingToCartId, setAddingToCartId] = useState<string | null>(null);
 
-  // Obtener productos favoritos
-  const favoriteProducts = mockProducts.filter((product: Product) => 
-    authState.favorites.includes(product.id.toString())
-  );
+  // Check if user is logged in
+  const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
+  const isAuthenticated = !!userId;
 
-  const handleAddToCart = (product: Product) => {
-    addItem({
-      id: product.id.toString(),
-      name: product.name,
-      price: product.price,
-      originalPrice: product.originalPrice,
-      image: product.image,
-      category: product.category,
-      brand: product.brand || "GlowHair",
-      size: product.size,
-      inStock: product.inStock ? 1 : 0
-    }, 1);
-  };
+  // Load favorites on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadFavorites();
+    } else {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
 
-  if (!authState.isAuthenticated) {
+  async function loadFavorites() {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await favoritesAPI.getAll();
+      setFavorites(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar favoritos');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRemoveFavorite(productId: string) {
+    try {
+      setRemovingId(productId);
+      await favoritesAPI.remove(productId);
+      setFavorites(prevFavs => prevFavs.filter(fav => fav.product.id !== productId));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al eliminar favorito');
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
+  async function handleAddToCart(productId: string) {
+    try {
+      setAddingToCartId(productId);
+      await cartAPI.add(productId, 1);
+      // Optionally show success message
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al agregar al carrito');
+    } finally {
+      setAddingToCartId(null);
+    }
+  }
+
+  // Not authenticated view
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
@@ -74,6 +108,49 @@ const FavoritesPage = () => {
     );
   }
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="pt-20 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-glow-600 mx-auto mb-4" />
+            <p className="text-gray-600">Cargando favoritos...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="pt-20 max-w-4xl mx-auto px-4 py-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-lg p-8 text-center"
+          >
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Error</h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={loadFavorites}
+              className="px-6 py-3 bg-gradient-to-r from-glow-600 to-glow-500 text-white rounded-lg font-medium hover:from-glow-700 hover:to-glow-600 transition-all duration-200"
+            >
+              Reintentar
+            </motion.button>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -94,7 +171,7 @@ const FavoritesPage = () => {
               </h1>
             </div>
             <p className="text-xl text-glow-100 max-w-3xl mx-auto">
-              {favoriteProducts.length} producto{favoriteProducts.length !== 1 ? 's' : ''} guardado{favoriteProducts.length !== 1 ? 's' : ''}
+              {favorites.length} producto{favorites.length !== 1 ? 's' : ''} guardado{favorites.length !== 1 ? 's' : ''}
             </p>
           </motion.div>
         </div>
@@ -103,7 +180,7 @@ const FavoritesPage = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Content */}
-        {favoriteProducts.length === 0 ? (
+        {favorites.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -130,110 +207,133 @@ const FavoritesPage = () => {
           </motion.div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {favoriteProducts.map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white rounded-xl shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300"
-              >
-                <div className="relative aspect-square bg-gradient-to-br from-glow-50 to-glow-100 p-6">
-                  <div className="w-full h-full flex items-center justify-center text-glow-600">
-                    {product.image}
-                  </div>
-                  
-                  {/* Favorite Button */}
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => toggleFavorite(product.id.toString())}
-                    className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-white transition-colors"
-                  >
-                    <Heart
-                      size={20}
-                      className="text-red-500"
-                      fill="currentColor"
-                    />
-                  </motion.button>
+            {favorites.map((favorite, index) => {
+              const product = favorite.product;
+              const isRemoving = removingId === product.id;
+              const isAddingToCart = addingToCartId === product.id;
+              const discount = product.original_price 
+                ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
+                : 0;
 
-                  {/* Discount Badge */}
-                  {product.originalPrice && (
-                    <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded-lg text-sm font-medium">
-                      -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-4">
-                  <div className="mb-2">
-                    <span className="text-xs text-glow-600 bg-glow-50 px-2 py-1 rounded-full">
-                      {product.category}
-                    </span>
-                  </div>
-                  
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
-                    {product.name}
-                  </h3>
-                  
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                    {product.description}
-                  </p>
-                  
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <span className="text-lg font-bold text-gray-900">
-                        ${product.price.toFixed(2)}
-                      </span>
-                      {product.originalPrice && (
-                        <span className="text-sm text-gray-500 line-through ml-2">
-                          ${product.originalPrice.toFixed(2)}
-                        </span>
+              return (
+                <motion.div
+                  key={favorite.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="bg-white rounded-xl shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300"
+                >
+                  <div className="relative aspect-square bg-gradient-to-br from-glow-50 to-glow-100">
+                    {product.image ? (
+                      <img 
+                        src={product.image} 
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-glow-400">
+                        <Heart className="w-24 h-24" />
+                      </div>
+                    )}
+                    
+                    {/* Favorite Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => handleRemoveFavorite(product.id)}
+                      disabled={isRemoving}
+                      className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-white transition-colors disabled:opacity-50"
+                    >
+                      {isRemoving ? (
+                        <Loader2 size={20} className="text-gray-400 animate-spin" />
+                      ) : (
+                        <Heart
+                          size={20}
+                          className="text-red-500"
+                          fill="currentColor"
+                        />
                       )}
+                    </motion.button>
+
+                    {/* Discount Badge */}
+                    {discount > 0 && (
+                      <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded-lg text-sm font-medium">
+                        -{discount}%
+                      </div>
+                    )}
+
+                    {/* Stock indicator */}
+                    {product.stock === 0 && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <span className="bg-white px-4 py-2 rounded-lg font-semibold text-red-600">
+                          Sin Stock
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4">
+                    <div className="mb-2">
+                      <span className="text-xs text-glow-600 bg-glow-50 px-2 py-1 rounded-full">
+                        {product.category?.name || 'Sin categoría'}
+                      </span>
                     </div>
                     
-                    <div className="flex items-center space-x-1">
-                      <div className="flex">
-                        {[...Array(5)].map((_, i) => (
-                          <div
-                            key={i}
-                            className={`w-3 h-3 rounded-full ${
-                              i < Math.floor(product.rating)
-                                ? "bg-yellow-400"
-                                : "bg-gray-200"
-                            }`}
-                          />
-                        ))}
+                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                      {product.name}
+                    </h3>
+                    
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                      {product.description}
+                    </p>
+                    
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <span className="text-lg font-bold text-gray-900">
+                          ${product.price.toFixed(2)}
+                        </span>
+                        {product.original_price && (
+                          <span className="text-sm text-gray-500 line-through ml-2">
+                            ${product.original_price.toFixed(2)}
+                          </span>
+                        )}
                       </div>
+                      
                       <span className="text-xs text-gray-500">
-                        ({product.rating})
+                        Stock: {product.stock}
                       </span>
                     </div>
-                  </div>
 
-                  <div className="flex space-x-2">
-                    <Link href={`/productos/${product.id}`} className="flex-1">
+                    <div className="flex space-x-2">
+                      <Link href={`/productos/${product.id}`} className="flex-1">
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          className="w-full py-2 text-glow-600 border border-glow-300 rounded-lg font-medium hover:bg-glow-50 transition-all duration-200"
+                        >
+                          Ver Detalles
+                        </motion.button>
+                      </Link>
+                      
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="w-full py-2 text-glow-600 border border-glow-300 rounded-lg font-medium hover:bg-glow-50 transition-all duration-200"
+                        onClick={() => handleAddToCart(product.id)}
+                        disabled={isAddingToCart || product.stock === 0}
+                        className="px-4 py-2 bg-gradient-to-r from-glow-600 to-glow-500 text-white rounded-lg hover:from-glow-700 hover:to-glow-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                       >
-                        Ver Detalles
+                        {isAddingToCart ? (
+                          <Loader2 size={18} className="animate-spin" />
+                        ) : (
+                          <ShoppingCart size={18} />
+                        )}
                       </motion.button>
-                    </Link>
-                    
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => handleAddToCart(product)}
-                      className="px-4 py-2 bg-gradient-to-r from-glow-600 to-glow-500 text-white rounded-lg hover:from-glow-700 hover:to-glow-600 transition-all duration-200"
-                    >
-                      <ShoppingCart size={18} />
-                    </motion.button>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>
