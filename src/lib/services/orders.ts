@@ -76,10 +76,19 @@ export const cartService = {
   },
 
   // Actualizar cantidad en carrito
-  async updateCartItem(userId: string, itemId: string, quantity: number): Promise<ApiResponse<CartItem>> {
+  async updateCartItem(userId: string, itemId: string, quantity: number): Promise<ApiResponse<CartItem | null>> {
     try {
       if (quantity <= 0) {
-        return await this.removeFromCart(userId, itemId);
+        // Si la cantidad es 0 o menor, eliminar el item
+        const { error } = await supabase
+          .from('cart_items')
+          .delete()
+          .eq('id', itemId)
+          .eq('user_id', userId);
+
+        if (error) throw error;
+
+        return { success: true, data: null };
       }
 
       const { data, error } = await supabase

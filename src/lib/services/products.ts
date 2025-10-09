@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../supabase';
 import type { Product, Category, Brand, ApiResponse, PaginatedResponse } from '@/types';
 
 // ==========================================
