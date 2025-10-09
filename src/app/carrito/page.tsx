@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { 
@@ -10,23 +11,138 @@ import {
   ShoppingBag, 
   CreditCard,
   Lock,
-  Truck
+  Truck,
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import { useCart } from "@/context/CartContext";
+import { cartAPI } from "@/lib/api";
 
 export default function CartPage() {
   const router = useRouter();
   const { state, updateQuantity, removeItem } = useCart();
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totals, setTotals] = useState({
+    subtotal: 0,
+    shipping: 0,
+    tax: 0,
+    total: 0
+  });
 
-  const subtotal = state.total;
-  const shipping = subtotal >= 50 ? 0 : 9.99;
-  const tax = subtotal * 0.1; // 10% tax
-  const total = subtotal + shipping + tax;
+  // Fetch cart from API
+  const fetchCart = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Cart data is already in local state from CartContext
+      // Just fetch totals from API
+      const totalsData = await cartAPI.getTotal();
+      setTotals({
+        subtotal: totalsData.subtotal,
+        shipping: totalsData.shipping,
+        tax: totalsData.tax,
+        total: totalsData.total
+      });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al cargar el carrito';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCart();
+  }, [fetchCart]);
+
+  const subtotal = totals.subtotal;
+  const shipping = totals.shipping;
+  const tax = totals.tax;
+  const total = totals.total;
 
   const handleCheckout = () => {
     router.push('/checkout');
   };
+
+  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
+    if (newQuantity < 1) {
+      handleRemoveItem(itemId);
+      return;
+    }
+
+    try {
+      await cartAPI.update(itemId, newQuantity);
+      // Update local state
+      updateQuantity(itemId, newQuantity);
+      // Refresh cart totals
+      await fetchCart();
+    } catch (err) {
+      console.error('Error updating quantity:', err);
+      alert('Error al actualizar cantidad');
+    }
+  };
+
+  const handleRemoveItem = async (itemId: string) => {
+    try {
+      await cartAPI.remove(itemId);
+      // Update local state
+      removeItem(itemId);
+      // Refresh cart
+      await fetchCart();
+    } catch (err) {
+      console.error('Error removing item:', err);
+      alert('Error al eliminar producto');
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="pt-20 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 text-glow-600 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Cargando carrito...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="pt-20 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center max-w-md mx-auto px-4">
+            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Error al cargar el carrito</h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={fetchCart}
+                className="bg-glow-600 text-white px-6 py-3 rounded-lg hover:bg-glow-700 transition-colors"
+              >
+                Reintentar
+              </button>
+              <button
+                onClick={() => router.push('/productos')}
+                className="bg-white text-gray-700 px-6 py-3 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+              >
+                Ver Productos
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -158,7 +274,7 @@ export default function CartPage() {
                                 <motion.button
                                   whileHover={{ scale: 1.1 }}
                                   whileTap={{ scale: 0.9 }}
-                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                  onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
                                   className="p-2 hover:bg-gray-100 transition-colors"
                                 >
                                   <Minus size={16} />
@@ -169,7 +285,7 @@ export default function CartPage() {
                                 <motion.button
                                   whileHover={{ scale: 1.1 }}
                                   whileTap={{ scale: 0.9 }}
-                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                  onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
                                   disabled={item.quantity >= item.inStock}
                                   className="p-2 hover:bg-gray-100 transition-colors disabled:opacity-50"
                                 >
@@ -193,7 +309,7 @@ export default function CartPage() {
                           <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            onClick={() => removeItem(item.id)}
+                            onClick={() => handleRemoveItem(item.id)}
                             className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                           >
                             <Trash2 size={20} />
