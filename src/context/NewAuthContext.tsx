@@ -29,6 +29,9 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   signUp: (email: string, password: string, userData?: Partial<Profile>) => Promise<{ success: boolean; error?: string }>;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithFacebook: () => Promise<void>;
+  signInWithInstagram: () => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => Promise<void>;
@@ -91,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: userProfile?.role || "customer",
       is_admin: userProfile?.role === "admin" || userProfile?.role === "super_admin",
       admin_permissions: userProfile?.admin_permissions,
-      profile: userProfile,
+      profile: userProfile || undefined,
     };
   }, []);
 
@@ -100,42 +103,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
 
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            first_name: userData?.first_name,
-            last_name: userData?.last_name,
-          }
-        }
+      // Usar la nueva API de signup
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
+          fullName: userData?.first_name && userData?.last_name 
+            ? `${userData.first_name} ${userData.last_name}` 
+            : undefined,
+          phone: userData?.phone,
+          hairType: userData?.hair_type,
+        }),
       });
 
-      if (authError) {
-        return { success: false, error: authError.message };
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Error en el registro' };
       }
 
-      if (authData.user) {
-        // Crear perfil en la base de datos
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .insert({
-            id: authData.user.id,
-            email,
-            first_name: userData?.first_name,
-            last_name: userData?.last_name,
-            role: "customer",
-            ...userData
-          });
-
-        if (profileError) {
-          console.error("Error creating profile:", profileError);
-        }
-      }
+      // Refrescar el usuario después del registro
+      await refreshUser();
 
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error inesperado';
+      return { success: false, error: errorMessage };
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
@@ -146,20 +141,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Usar la nueva API de signin
+      const response = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (error) {
-        return { success: false, error: error.message };
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Error al iniciar sesión' };
       }
 
+      // Refrescar el usuario después del login
+      await refreshUser();
+
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error inesperado';
+      return { success: false, error: errorMessage };
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  // Iniciar sesión con Google
+  const signInWithGoogle = async () => {
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback`,
+        },
+      });
+    } catch (error) {
+      console.error('Error con Google login:', error);
+    }
+  };
+
+  // Iniciar sesión con Facebook
+  const signInWithFacebook = async () => {
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback`,
+        },
+      });
+    } catch (error) {
+      console.error('Error con Facebook login:', error);
+    }
+  };
+
+  // Iniciar sesión con Instagram
+  const signInWithInstagram = async () => {
+    try {
+      // Instagram usa Facebook OAuth con permisos adicionales
+      await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback`,
+          scopes: 'email,public_profile,instagram_basic',
+        },
+      });
+    } catch (error) {
+      console.error('Error con Instagram login:', error);
     }
   };
 
@@ -167,11 +214,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error("Error signing out:", error);
-      }
+      
+      // Usar la nueva API de signout
+      await fetch('/api/auth/signout', { method: 'POST' });
+      
       setFavorites([]);
+      
+      // Actualizar el estado local
+      setState({
+        user: null,
+        session: null,
+        isAuthenticated: false,
+        isLoading: false,
+        isAdmin: false,
+      });
     } catch (error) {
       console.error("Error in signOut:", error);
     } finally {
@@ -198,8 +254,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Actualizar el estado local
       await refreshUser();
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error inesperado';
+      return { success: false, error: errorMessage };
     }
   };
 
@@ -316,6 +373,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ...state,
     signUp,
     signIn,
+    signInWithGoogle,
+    signInWithFacebook,
+    signInWithInstagram,
     signOut,
     updateProfile,
     refreshUser,

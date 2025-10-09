@@ -100,10 +100,10 @@ const Navbar = () => {
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     className="flex items-center space-x-2 p-2 text-gray-600 hover:text-glow-600 transition-colors duration-200"
                   >
-                    {authState.user?.avatar ? (
+                    {authState.user?.avatar_url ? (
                       <Image 
-                        src={authState.user.avatar} 
-                        alt={authState.user.firstName || 'Usuario'}
+                        src={authState.user.avatar_url} 
+                        alt={authState.user.first_name || 'Usuario'}
                         width={32}
                         height={32}
                         className="w-8 h-8 rounded-full object-cover"
@@ -125,7 +125,7 @@ const Navbar = () => {
                       >
                         <div className="px-4 py-2 border-b border-gray-200">
                           <p className="text-sm font-medium text-gray-900">
-                            {authState.user?.firstName} {authState.user?.lastName}
+                            {authState.user?.first_name} {authState.user?.last_name}
                           </p>
                           <p className="text-xs text-gray-500">{authState.user?.email}</p>
                         </div>
@@ -149,11 +149,6 @@ const Navbar = () => {
                           >
                             <Heart size={16} className="mr-2" />
                             Mis Favoritos
-                            {authState.favorites.length > 0 && (
-                              <span className="ml-auto bg-glow-500 text-white text-xs rounded-full px-2 py-0.5">
-                                {authState.favorites.length}
-                              </span>
-                            )}
                           </motion.button>
                         </Link>
                         
@@ -208,15 +203,6 @@ const Navbar = () => {
                     className="p-2 text-gray-600 hover:text-glow-600 transition-colors duration-200 relative"
                   >
                     <Heart size={20} />
-                    {authState.favorites.length > 0 && (
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium"
-                      >
-                        {authState.favorites.length}
-                      </motion.span>
-                    )}
                   </motion.button>
                 </Link>
               </div>
@@ -318,10 +304,10 @@ const Navbar = () => {
                 {authState.isAuthenticated ? (
                   <div className="space-y-3">
                     <div className="flex items-center space-x-3 pb-3 border-b border-gray-200">
-                      {authState.user?.avatar ? (
+                      {authState.user?.avatar_url ? (
                         <Image 
-                          src={authState.user.avatar} 
-                          alt={authState.user.firstName || 'Usuario'}
+                          src={authState.user.avatar_url} 
+                          alt={authState.user.first_name || 'Usuario'}
                           width={48}
                           height={48}
                           className="w-12 h-12 rounded-full object-cover"
@@ -333,7 +319,7 @@ const Navbar = () => {
                       )}
                       <div>
                         <p className="text-sm font-medium text-gray-900">
-                          {authState.user?.firstName} {authState.user?.lastName}
+                          {authState.user?.first_name} {authState.user?.last_name}
                         </p>
                         <p className="text-xs text-gray-500">{authState.user?.email}</p>
                       </div>
@@ -358,11 +344,6 @@ const Navbar = () => {
                       >
                         <Heart size={20} />
                         <span>Mis Favoritos</span>
-                        {authState.favorites.length > 0 && (
-                          <span className="ml-auto bg-glow-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
-                            {authState.favorites.length}
-                          </span>
-                        )}
                       </motion.button>
                     </Link>
 

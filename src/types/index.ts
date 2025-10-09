@@ -85,10 +85,18 @@ export interface Profile {
   date_of_birth?: string;
   gender?: string;
   hair_type?: string;
+  hair_concerns?: string[];
+  preferred_brands?: string[];
   skin_type?: string;
+  role?: 'customer' | 'admin' | 'super_admin';
+  admin_permissions?: Record<string, boolean>;
   preferences?: Record<string, unknown>;
+  newsletter_subscribed?: boolean;
   is_verified: boolean;
   is_active: boolean;
+  total_orders?: number;
+  total_spent?: number;
+  loyalty_points?: number;
   last_login?: string;
   created_at: string;
   updated_at: string;
