@@ -82,6 +82,7 @@ const ImageUpload = ({
         <div className="mb-6">
           <h3 className="text-sm font-medium text-gray-700 mb-3">Imagen Actual</h3>
           <div className="w-32 h-32 rounded-lg overflow-hidden bg-gray-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={currentImage}
               alt="Imagen actual"
@@ -149,6 +150,7 @@ const ImageUpload = ({
             {images.map((image, index) => (
               <div key={image.id} className="relative group">
                 <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={image.preview}
                     alt={`Preview ${index + 1}`}

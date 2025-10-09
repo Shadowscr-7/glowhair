@@ -1,8 +1,6 @@
 "use client";
 
 import { createContext, useContext, useReducer, useEffect, ReactNode } from "react";
-import { supabase } from "@/lib/supabase";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
 import type { Profile } from "@/types";
 
 interface User {
@@ -112,7 +110,7 @@ const initialState: AuthState = {
 
 interface AuthContextType {
   state: AuthState;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password?: string) => Promise<boolean>;
   register: (userData: RegisterData) => Promise<boolean>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => Promise<boolean>;
@@ -193,7 +191,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [state.favorites]);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string): Promise<boolean> => {
     dispatch({ type: "LOGIN_START" });
 
     try {
@@ -214,22 +212,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       const mockUser: User = {
         id: "user_" + Date.now(),
-        firstName,
-        lastName,
         email: email,
+        full_name: `${firstName} ${lastName}`,
+        first_name: firstName,
+        last_name: lastName,
         role,
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(firstName + " " + lastName)}&background=7c3aed&color=fff`,
-        createdAt: new Date().toISOString(),
-        preferences: {
-          newsletter: true,
-          promotions: false,
-          hairType: ["Normal"]
-        }
+        is_admin: role === "admin",
+        avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(firstName + " " + lastName)}&background=7c3aed&color=fff`
       };
 
       dispatch({ type: "LOGIN_SUCCESS", user: mockUser });
       return true;
-    } catch (error) {
+    } catch {
       dispatch({ type: "LOGIN_FAILURE" });
       return false;
     }
@@ -244,22 +238,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const newUser: User = {
         id: "user_" + Date.now(),
-        firstName: userData.firstName,
-        lastName: userData.lastName,
         email: userData.email,
-        role: "customer", // Los usuarios registrados son clientes por defecto
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.firstName + " " + userData.lastName)}&background=7c3aed&color=fff`,
-        createdAt: new Date().toISOString(),
-        preferences: {
-          newsletter: userData.newsletter,
-          promotions: false,
-          hairType: userData.hairType
-        }
+        full_name: `${userData.firstName} ${userData.lastName}`,
+        first_name: userData.firstName,
+        last_name: userData.lastName,
+        role: "customer",
+        is_admin: false,
+        avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.firstName + " " + userData.lastName)}&background=7c3aed&color=fff`
       };
 
       dispatch({ type: "REGISTER_SUCCESS", user: newUser });
       return true;
-    } catch (error) {
+    } catch {
       dispatch({ type: "REGISTER_FAILURE" });
       return false;
     }
@@ -283,7 +273,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       dispatch({ type: "UPDATE_USER", user: updatedUser });
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   };

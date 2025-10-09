@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Upload, Trash2, X } from "lucide-react";
+import { Upload, Trash2 } from "lucide-react";
 import { CldUploadWidget } from 'next-cloudinary';
+import type { CloudinaryUploadWidgetResults } from 'next-cloudinary';
 
 export interface ImageFile {
   file?: File;
@@ -31,8 +32,8 @@ const ImageUpload = ({
     onImagesChange(images.filter(img => img.id !== imageId));
   };
 
-  const handleUploadSuccess = (result: any) => {
-    if (result.event === "success" && result.info) {
+  const handleUploadSuccess = (result: CloudinaryUploadWidgetResults) => {
+    if (result.event === "success" && result.info && typeof result.info !== "string") {
       const newImage: ImageFile = {
         id: result.info.public_id,
         url: result.info.secure_url,
@@ -51,6 +52,7 @@ const ImageUpload = ({
         <div className="mb-6">
           <h3 className="text-sm font-medium text-gray-700 mb-3">Imagen Actual</h3>
           <div className="w-32 h-32 rounded-lg overflow-hidden bg-gray-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={currentImage}
               alt="Imagen actual"
@@ -75,8 +77,6 @@ const ImageUpload = ({
             maxFileSize: 10000000, // 10MB
             cropping: false,
             multiple: true,
-            quality: "auto",
-            fetchFormat: "auto",
             sources: ["local", "url", "camera"]
           }}
           onUpload={handleUploadSuccess}
@@ -110,7 +110,7 @@ const ImageUpload = ({
                         PNG, JPG, WEBP hasta 10MB (máximo {maxImages - images.length} más)
                       </p>
                       <p className="text-xs text-gray-400 mt-2">
-                        Se subirán a la carpeta "glowhair" en Cloudinary
+                        Se subirán a la carpeta &quot;glowhair&quot; en Cloudinary
                       </p>
                     </>
                   )}
@@ -141,6 +141,7 @@ const ImageUpload = ({
             {images.map((image, index) => (
               <div key={image.id} className="relative group">
                 <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={image.url || image.preview}
                     alt={`Preview ${index + 1}`}

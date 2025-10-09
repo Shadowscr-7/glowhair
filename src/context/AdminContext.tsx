@@ -289,7 +289,7 @@ export const AdminProvider = ({ children }: AdminProviderProps) => {
       dispatch({ type: "SET_LOADING", loading: false });
       
       return true;
-    } catch (error) {
+    } catch {
       dispatch({ type: "SET_LOADING", loading: false });
       return false;
     }
@@ -306,7 +306,7 @@ export const AdminProvider = ({ children }: AdminProviderProps) => {
       dispatch({ type: "SET_LOADING", loading: false });
       
       return true;
-    } catch (error) {
+    } catch {
       dispatch({ type: "SET_LOADING", loading: false });
       return false;
     }
@@ -323,7 +323,7 @@ export const AdminProvider = ({ children }: AdminProviderProps) => {
       dispatch({ type: "SET_LOADING", loading: false });
       
       return true;
-    } catch (error) {
+    } catch {
       dispatch({ type: "SET_LOADING", loading: false });
       return false;
     }
@@ -340,7 +340,7 @@ export const AdminProvider = ({ children }: AdminProviderProps) => {
       dispatch({ type: "SET_LOADING", loading: false });
       
       return true;
-    } catch (error) {
+    } catch {
       dispatch({ type: "SET_LOADING", loading: false });
       return false;
     }
@@ -366,7 +366,7 @@ export const AdminProvider = ({ children }: AdminProviderProps) => {
       
       dispatch({ type: "SET_ANALYTICS", analytics: updatedAnalytics });
       dispatch({ type: "SET_LOADING", loading: false });
-    } catch (error) {
+    } catch {
       dispatch({ type: "SET_LOADING", loading: false });
     }
   };
