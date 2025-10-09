@@ -1,22 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/NewAuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, state } = useAuth();
+  const { signIn, isLoading, isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: ""
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Redirigir si ya está autenticado
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push('/');
+    }
+  }, [isAuthenticated, router]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -50,13 +58,16 @@ export default function LoginPage() {
     
     if (!validateForm()) return;
 
-    const success = await login(formData.email, formData.password);
+    setIsSubmitting(true);
+    const result = await signIn(formData.email, formData.password);
     
-    if (success) {
+    if (result.success) {
+      // La redirección se maneja automáticamente por el useEffect
       router.push("/");
     } else {
-      setErrors({ general: "Email o contraseña incorrectos" });
+      setErrors({ general: result.error || "Email o contraseña incorrectos" });
     }
+    setIsSubmitting(false);
   };
 
   return (
@@ -182,10 +193,10 @@ export default function LoginPage() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="submit"
-                disabled={state.isLoading}
+                disabled={isSubmitting || isLoading}
                 className="w-full bg-gradient-to-r from-glow-600 to-glow-500 text-white py-3 px-4 rounded-lg font-semibold hover:from-glow-700 hover:to-glow-600 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                {state.isLoading ? (
+                {isSubmitting || isLoading ? (
                   <>
                     <motion.div
                       animate={{ rotate: 360 }}
@@ -265,19 +276,22 @@ export default function LoginPage() {
             </div>
           </motion.div>
 
-          {/* Demo Credentials */}
+          {/* Admin Credentials */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4"
+            className="mt-6 bg-purple-50 border border-purple-200 rounded-lg p-4"
           >
-            <h3 className="text-sm font-medium text-blue-900 mb-2">
-              Credenciales de Demo
+            <h3 className="text-sm font-medium text-purple-900 mb-2">
+              👑 Credenciales de Admin
             </h3>
-            <p className="text-xs text-blue-700">
-              Email: demo@glowhair.com<br />
-              Contraseña: cualquier contraseña (mínimo 6 caracteres)
+            <p className="text-xs text-purple-700">
+              Email: keila@glowhair.com<br />
+              Contraseña: keila123456<br />
+              <span className="text-purple-600 font-medium">
+                Acceso completo al panel de administración
+              </span>
             </p>
           </motion.div>
         </div>

@@ -5,8 +5,9 @@ import { ShoppingCart, Heart, Star, Eye } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/NewAuthContext";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface Product {
   id: string;
@@ -15,7 +16,8 @@ interface Product {
   originalPrice?: number;
   rating: number;
   reviewCount: number;
-  image: React.ReactNode;
+  image?: React.ReactNode;
+  image_url?: string;
   category: string;
   brand?: string;
   isNew?: boolean;
@@ -145,17 +147,30 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
       {/* Product Image */}
       <div className="relative h-40 sm:h-48 bg-gradient-to-br from-glow-50 to-glow-100 flex items-center justify-center p-6 sm:p-8">
         <motion.div
-          animate={{ 
+          animate={{
             scale: isHovered ? 1.1 : 1,
             rotate: isHovered ? 5 : 0
           }}
           transition={{ duration: 0.3 }}
           className="w-16 h-16 sm:w-20 sm:h-20"
         >
-          {product.image}
-        </motion.div>
-
-        {/* Quick Actions - Mobile: Always visible, Desktop: On hover */}
+          {product.image_url ? (
+            <Image
+              src={product.image_url}
+              alt={product.name}
+              width={80}
+              height={80}
+              className="w-full h-full object-cover rounded-lg"
+              onError={() => {
+                // Fallback handled by Next.js Image component
+              }}
+            />
+          ) : (
+            <div>
+              {product.image}
+            </div>
+          )}
+        </motion.div>        {/* Quick Actions - Mobile: Always visible, Desktop: On hover */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ 

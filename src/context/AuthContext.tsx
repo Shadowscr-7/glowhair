@@ -1,20 +1,21 @@
 "use client";
 
 import { createContext, useContext, useReducer, useEffect, ReactNode } from "react";
+import { supabase } from "@/lib/supabase";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
+import type { Profile } from "@/types";
 
 interface User {
   id: string;
-  firstName: string;
-  lastName: string;
   email: string;
-  role: "customer" | "admin";
-  avatar?: string;
-  createdAt: string;
-  preferences: {
-    newsletter: boolean;
-    promotions: boolean;
-    hairType: string[];
-  };
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
+  avatar_url?: string;
+  role: "customer" | "admin" | "super_admin";
+  is_admin: boolean;
+  admin_permissions?: Record<string, boolean>;
+  profile?: Profile;
 }
 
 interface AuthState {

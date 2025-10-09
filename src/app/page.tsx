@@ -5,6 +5,7 @@ import Navbar from "@/components/layout/Navbar";
 import ProductCard from "@/components/product/ProductCard";
 import { ShampooIcon, ConditionerIcon, MaskIcon, SerumIcon, OilIcon, SprayIcon } from "@/components/ui/ProductIcons";
 import { ArrowRight, Sparkles, Award, Truck } from "lucide-react";
+import fondowebImage from "@/assets/fondoweb.png";
 
 // Sample products data
 const sampleProducts = [
@@ -82,9 +83,84 @@ export default function Home() {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="relative pt-16 min-h-[80vh] sm:min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Background Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-glow-50 via-white to-glow-100" />
+      <section className="relative pt-16 w-full overflow-hidden">
+        {/* Background Image */}
+        <div 
+          className="w-full"
+          style={{
+            backgroundImage: `url(${fondowebImage.src})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center center',
+            backgroundRepeat: 'no-repeat',
+            aspectRatio: '21/9', // Más panorámico para cubrir mejor el ancho
+            minHeight: '600px'
+          }}
+        >
+          {/* Background Gradient Overlay for better text visibility */}
+          <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-black/40 to-black/30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30" />
+          
+          {/* Content Container */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-12 sm:py-20">
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+              >
+                <motion.div
+                  animate={{ rotate: [0, 5, -5, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  className="flex justify-center mb-4 sm:mb-6"
+                >
+                  <Sparkles className="w-12 h-12 sm:w-16 sm:h-16 text-glow-500" />
+                </motion.div>
+                
+                <h1 className="text-4xl sm:text-5xl md:text-7xl font-display font-bold mb-4 sm:mb-6 drop-shadow-2xl">
+                  <span className="bg-gradient-to-r from-glow-400 via-glow-300 to-glow-200 bg-clip-text text-transparent filter drop-shadow-lg">
+                    GlowHair
+                  </span>
+                </h1>
+                
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.8 }}
+                  className="text-lg sm:text-xl md:text-2xl text-white font-medium mb-6 sm:mb-8 max-w-3xl mx-auto px-2 drop-shadow-lg"
+                  style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.7)' }}
+                >
+                  Descubre la belleza natural de tu cabello con productos premium 
+                  diseñados para nutrir, reparar y realzar tu melena.
+                </motion.p>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6, duration: 0.8 }}
+                  className="flex flex-col sm:flex-row gap-4 justify-center items-center px-4"
+                >
+                  <motion.a
+                    href="/productos"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="w-full sm:w-auto bg-gradient-to-r from-glow-600 to-glow-500 text-white px-6 sm:px-8 py-4 rounded-full font-semibold text-base sm:text-lg flex items-center justify-center gap-2 hover:from-glow-700 hover:to-glow-600 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  >
+                    Explorar Productos
+                    <ArrowRight className="w-5 h-5" />
+                  </motion.a>
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="w-full sm:w-auto border-2 border-glow-500 text-glow-600 px-6 sm:px-8 py-4 rounded-full font-semibold text-base sm:text-lg hover:bg-glow-50 transition-all duration-200"
+                  >
+                    Ver Ofertas
+                  </motion.button>
+                </motion.div>
+              </motion.div>
+            </div>
+          </div>
+        </div>
         
         {/* Animated Background Elements */}
         <motion.div
@@ -100,7 +176,7 @@ export default function Home() {
           className="absolute top-20 right-10 sm:right-20 w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-br from-glow-200 to-glow-300 rounded-full opacity-20 blur-xl"
         />
         
-        <motion.div
+                <motion.div
           animate={{ 
             scale: [1.2, 1, 1.2],
             rotate: [360, 180, 0]
@@ -112,63 +188,6 @@ export default function Home() {
           }}
           className="absolute bottom-20 left-10 sm:left-20 w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-br from-glow-300 to-glow-400 rounded-full opacity-15 blur-xl"
         />
-
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <motion.div
-              animate={{ rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="flex justify-center mb-4 sm:mb-6"
-            >
-              <Sparkles className="w-12 h-12 sm:w-16 sm:h-16 text-glow-500" />
-            </motion.div>
-            
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-display font-bold mb-4 sm:mb-6">
-              <span className="bg-gradient-to-r from-glow-600 via-glow-500 to-glow-400 bg-clip-text text-transparent">
-                GlowHair
-              </span>
-            </h1>
-            
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.8 }}
-              className="text-lg sm:text-xl md:text-2xl text-gray-700 mb-6 sm:mb-8 max-w-3xl mx-auto px-2"
-            >
-              Descubre la belleza natural de tu cabello con productos premium 
-              diseñados para nutrir, reparar y realzar tu melena.
-            </motion.p>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.8 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center px-4"
-            >
-              <motion.a
-                href="/productos"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-full sm:w-auto bg-gradient-to-r from-glow-600 to-glow-500 text-white px-6 sm:px-8 py-4 rounded-full font-semibold text-base sm:text-lg flex items-center justify-center gap-2 hover:from-glow-700 hover:to-glow-600 transition-all duration-200 shadow-lg hover:shadow-xl"
-              >
-                Explorar Productos
-                <ArrowRight className="w-5 h-5" />
-              </motion.a>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-full sm:w-auto border-2 border-glow-500 text-glow-600 px-6 sm:px-8 py-4 rounded-full font-semibold text-base sm:text-lg hover:bg-glow-50 transition-all duration-200"
-              >
-                Ver Ofertas
-              </motion.button>
-            </motion.div>
-          </motion.div>
-        </div>
       </section>
 
       {/* Features Section */}

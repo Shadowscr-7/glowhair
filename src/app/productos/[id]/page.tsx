@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import { useCart } from "@/context/CartContext";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/NewAuthContext";
 import { ShampooIcon, ConditionerIcon } from "@/components/ui/ProductIcons";
 
 // Sample product data (in a real app, this would come from an API)

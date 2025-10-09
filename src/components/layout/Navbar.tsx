@@ -4,8 +4,10 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingCart, Search, Menu, X, User, Heart, LogOut, Settings, ChevronDown, Shield } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useCart } from "@/context/CartContext";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/NewAuthContext";
+import logoKeila from "@/assets/logokeila.png";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -36,27 +38,23 @@ const Navbar = () => {
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="flex items-center space-x-2 cursor-pointer"
+              className="cursor-pointer"
             >
-              <div className="relative">
-                {/* Logo Icon */}
-                <motion.div
-                  animate={{ rotate: [0, 5, -5, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-glow-400 to-glow-600 rounded-full flex items-center justify-center"
-                >
-                  <div className="w-4 h-4 sm:w-5 sm:h-5 bg-white rounded-full relative">
-                    <motion.div
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                      className="absolute top-0 right-0 w-1 h-1 bg-glow-300 rounded-full"
-                    />
-                  </div>
-                </motion.div>
-              </div>
-              <h1 className="text-xl sm:text-2xl font-display font-bold bg-gradient-to-r from-glow-600 to-glow-400 bg-clip-text text-transparent">
-                GlowHair
-              </h1>
+              {/* Logo Completo Más Grande */}
+              <motion.div
+                animate={{ rotate: [0, 1, -1, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="h-12 sm:h-14"
+              >
+                <Image
+                  src={logoKeila}
+                  alt="GlowHair Logo"
+                  width={120}
+                  height={56}
+                  className="h-full w-auto object-contain"
+                  priority
+                />
+              </motion.div>
             </motion.div>
           </Link>
 
@@ -103,10 +101,12 @@ const Navbar = () => {
                     className="flex items-center space-x-2 p-2 text-gray-600 hover:text-glow-600 transition-colors duration-200"
                   >
                     {authState.user?.avatar ? (
-                      <img 
+                      <Image 
                         src={authState.user.avatar} 
-                        alt={authState.user.firstName}
-                        className="w-8 h-8 rounded-full"
+                        alt={authState.user.firstName || 'Usuario'}
+                        width={32}
+                        height={32}
+                        className="w-8 h-8 rounded-full object-cover"
                       />
                     ) : (
                       <User size={20} />
@@ -319,10 +319,12 @@ const Navbar = () => {
                   <div className="space-y-3">
                     <div className="flex items-center space-x-3 pb-3 border-b border-gray-200">
                       {authState.user?.avatar ? (
-                        <img 
+                        <Image 
                           src={authState.user.avatar} 
-                          alt={authState.user.firstName}
-                          className="w-12 h-12 rounded-full"
+                          alt={authState.user.firstName || 'Usuario'}
+                          width={48}
+                          height={48}
+                          className="w-12 h-12 rounded-full object-cover"
                         />
                       ) : (
                         <div className="w-12 h-12 bg-gradient-to-br from-glow-400 to-glow-600 rounded-full flex items-center justify-center">

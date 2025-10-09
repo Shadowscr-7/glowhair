@@ -14,7 +14,7 @@ import {
   Check 
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/NewAuthContext";
 
 interface FormData {
   firstName: string;

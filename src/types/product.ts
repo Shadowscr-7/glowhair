@@ -2,17 +2,21 @@ export interface Product {
   id: string;
   name: string;
   price: number;
-  originalPrice?: number;
+  original_price?: number;
   rating: number;
-  reviewCount: number;
-  image: React.ReactNode;
+  review_count: number;
+  image?: React.ReactNode;
+  image_url?: string;
   category: string;
-  brand: string;
-  isNew?: boolean;
-  isOnSale?: boolean;
+  brand?: string;
+  is_new?: boolean;
+  is_on_sale?: boolean;
   description: string;
-  ingredients: string[];
-  hairType: string[];
+  ingredients?: string[];
+  hair_type?: string[];
+  stock?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface FilterState {
@@ -32,10 +36,56 @@ export type SortOption =
   | "rating" 
   | "name";
 
+export interface CartItemDB {
+  id: string;
+  user_id: string;
+  product_id: string;
+  quantity: number;
+  created_at: string;
+  product?: Product;
+}
+
 export interface CartItem extends Product {
   quantity: number;
 }
 
 export interface WishlistItem extends Product {
   dateAdded: Date;
+}
+
+export interface Order {
+  id: string;
+  user_id: string;
+  total: number;
+  status: string;
+  shipping_address?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  product_id: string;
+  quantity: number;
+  price: number;
+  created_at: string;
+  product?: Product;
+}
+
+export interface Profile {
+  id: string;
+  email?: string;
+  full_name?: string;
+  avatar_url?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Favorite {
+  id: string;
+  user_id: string;
+  product_id: string;
+  created_at: string;
+  product?: Product;
 }

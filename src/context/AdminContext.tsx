@@ -9,7 +9,7 @@ interface OrderItem {
   name: string;
   price: number;
   quantity: number;
-  image: any;
+  image: string;
 }
 
 interface Order {

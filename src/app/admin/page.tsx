@@ -15,25 +15,34 @@ import {
   Calendar,
   Award
 } from "lucide-react";
-import { useAdmin } from "@/context/AdminContext";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/NewAuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 
 const AdminDashboard = () => {
-  const { state, refreshAnalytics } = useAdmin();
-  const { state: authState } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin } = useAuth();
   const router = useRouter();
 
   // Check if user is admin
   useEffect(() => {
-    if (!authState.isAuthenticated || authState.user?.role !== "admin") {
-      router.push("/");
+    if (!isLoading && (!isAuthenticated || !isAdmin)) {
+      router.push("/login");
     }
-  }, [authState, router]);
+  }, [isLoading, isAuthenticated, isAdmin, router]);
 
-  if (!authState.isAuthenticated || authState.user?.role !== "admin") {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-glow-600"></div>
+          <p className="text-gray-600 mt-4">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !isAdmin) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -50,31 +59,32 @@ const AdminDashboard = () => {
     );
   }
 
+  // Datos de ejemplo para las estadísticas
   const stats = [
     {
       name: "Ingresos Totales",
-      value: `€${state.analytics.totalRevenue.toLocaleString()}`,
-      change: `+${state.analytics.revenueGrowth}%`,
+      value: "€45,231",
+      change: "+20.1%",
       changeType: "increase",
       icon: DollarSign
     },
     {
       name: "Pedidos",
-      value: state.analytics.totalOrders.toString(),
-      change: `+${state.analytics.ordersGrowth}%`,
+      value: "1,429",
+      change: "+15.3%",
       changeType: "increase",
       icon: ShoppingBag
     },
     {
       name: "Productos",
-      value: state.analytics.totalProducts.toString(),
+      value: "156",
       change: "+2 nuevos",
       changeType: "neutral",
       icon: Package
     },
     {
       name: "Clientes",
-      value: state.analytics.totalCustomers.toString(),
+      value: "893",
       change: "+12 nuevos",
       changeType: "increase",
       icon: Users
@@ -126,7 +136,7 @@ const AdminDashboard = () => {
         >
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              ¡Bienvenido, {authState.user?.firstName}!
+              ¡Bienvenido, Keila!
             </h1>
             <p className="text-gray-600 mt-2">
               Resumen de tu tienda GlowHair
@@ -136,7 +146,7 @@ const AdminDashboard = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => refreshAnalytics()}
+            onClick={() => window.location.reload()}
             className="bg-gradient-to-r from-glow-600 to-glow-500 text-white px-6 py-3 rounded-lg hover:from-glow-700 hover:to-glow-600 transition-all duration-200 font-medium"
           >
             Actualizar Datos
@@ -210,7 +220,7 @@ const AdminDashboard = () => {
                   <BarChart3 className="h-6 w-6 text-blue-600" />
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-gray-900">{state.analytics.totalOrders}</p>
+                  <p className="text-2xl font-bold text-gray-900">1,429</p>
                   <p className="text-sm text-gray-500">Total</p>
                 </div>
               </div>
@@ -235,7 +245,7 @@ const AdminDashboard = () => {
                   <Award className="h-6 w-6 text-green-600" />
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-gray-900">{state.products.length}</p>
+                  <p className="text-2xl font-bold text-gray-900">156</p>
                   <p className="text-sm text-gray-500">Productos</p>
                 </div>
               </div>
@@ -272,7 +282,7 @@ const AdminDashboard = () => {
               <div className="p-3 bg-indigo-100 rounded-lg mx-auto w-fit mb-2">
                 <DollarSign className="h-5 w-5 text-indigo-600" />
               </div>
-              <p className="text-lg font-bold text-gray-900">€{state.analytics.totalRevenue}</p>
+              <p className="text-lg font-bold text-gray-900">€45,231</p>
               <p className="text-sm text-gray-500">Ingresos totales</p>
             </div>
             
@@ -280,7 +290,7 @@ const AdminDashboard = () => {
               <div className="p-3 bg-pink-100 rounded-lg mx-auto w-fit mb-2">
                 <Users className="h-5 w-5 text-pink-600" />
               </div>
-              <p className="text-lg font-bold text-gray-900">{state.analytics.totalCustomers}</p>
+              <p className="text-lg font-bold text-gray-900">893</p>
               <p className="text-sm text-gray-500">Clientes únicos</p>
             </div>
           </div>
@@ -311,7 +321,12 @@ const AdminDashboard = () => {
             
             <div className="p-6">
               <div className="space-y-4">
-                {state.analytics.recentOrders.map((order) => (
+                {[
+                  { id: "ORD-001", customerName: "María García", total: 89.99, status: "delivered" },
+                  { id: "ORD-002", customerName: "Ana López", total: 156.50, status: "shipped" },
+                  { id: "ORD-003", customerName: "Carmen Silva", total: 234.00, status: "processing" },
+                  { id: "ORD-004", customerName: "Laura Martín", total: 67.25, status: "pending" }
+                ].map((order) => (
                   <motion.div
                     key={order.id}
                     whileHover={{ scale: 1.02 }}
@@ -368,7 +383,12 @@ const AdminDashboard = () => {
             
             <div className="p-6">
               <div className="space-y-4">
-                {state.analytics.topProducts.map((product, index) => (
+                {[
+                  { id: "1", name: "Serum Reparador Intensivo", sales: 89, revenue: 2670.00 },
+                  { id: "2", name: "Mascarilla Hidratante Premium", sales: 67, revenue: 2010.00 },
+                  { id: "3", name: "Aceite Nutritivo Natural", sales: 54, revenue: 1620.00 },
+                  { id: "4", name: "Champú Revitalizante", sales: 43, revenue: 1290.00 }
+                ].map((product, index) => (
                   <motion.div
                     key={product.id}
                     whileHover={{ scale: 1.02 }}
