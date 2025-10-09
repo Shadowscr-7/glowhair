@@ -14,7 +14,7 @@ import {
   Award
 } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/NewAuthContext";
 import { useRouter } from "next/navigation";
 import { 
   DateRangeFilter, 

@@ -16,7 +16,7 @@ import {
   User
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/NewAuthContext";
 import AdminLayout from "@/components/admin/AdminLayout";
 
 // Mock customer data

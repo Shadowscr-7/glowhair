@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "@/context/AdminContext";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/NewAuthContext";
 import AdminLayout from "@/components/admin/AdminLayout";
 
 const AdminProductsPage = () => {

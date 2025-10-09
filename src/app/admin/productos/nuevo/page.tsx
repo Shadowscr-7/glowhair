@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "@/context/AdminContext";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/NewAuthContext";
 import AdminLayout from "@/components/admin/AdminLayout";
 import ImageUpload, { ImageFile } from "@/components/admin/ImageUpload";
 
