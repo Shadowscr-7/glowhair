@@ -24,6 +24,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isAdmin: boolean;
+  favorites: string[];
 }
 
 interface AuthContextType extends AuthState {
@@ -52,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: false,
     isLoading: true,
     isAdmin: false,
+    favorites: [],
   });
 
   // Estado para favoritos (temporal - debería estar en base de datos)
@@ -227,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: false,
         isLoading: false,
         isAdmin: false,
+        favorites: [],
       });
     } catch (error) {
       console.error("Error in signOut:", error);
@@ -321,6 +324,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isAuthenticated: true,
             isLoading: false,
             isAdmin: userObject.is_admin,
+            favorites: favorites,
           });
         } else {
           setState({
@@ -329,6 +333,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isAuthenticated: false,
             isLoading: false,
             isAdmin: false,
+            favorites: [],
           });
         }
       } catch (error) {
@@ -351,6 +356,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isAuthenticated: true,
             isLoading: false,
             isAdmin: userObject.is_admin,
+            favorites: favorites,
           });
         } else if (event === "SIGNED_OUT") {
           setState({
@@ -359,6 +365,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isAuthenticated: false,
             isLoading: false,
             isAdmin: false,
+            favorites: [],
           });
         }
       }
@@ -367,7 +374,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [createUserObject]);
+  }, [createUserObject, favorites]);
 
   const value: AuthContextType = {
     ...state,
