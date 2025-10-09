@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { 
   Package, 
@@ -8,11 +8,13 @@ import {
   Euro, 
   Eye, 
   Download,
-  ArrowUpRight,
   Clock,
   CheckCircle,
   XCircle,
-  Truck
+  Truck,
+  Loader2,
+  AlertCircle,
+  Edit
 } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { useAuth } from "@/context/NewAuthContext";
@@ -31,24 +33,17 @@ import {
   StatusPieChart,
   generateSampleData 
 } from "@/components/admin/Charts";
-
-interface Order {
-  id: string;
-  customerName: string;
-  customerEmail: string;
-  date: string;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  total: number;
-  items: {
-    productName: string;
-    quantity: number;
-    price: number;
-  }[];
-}
+import { ordersAPI, Order } from "@/lib/api";
 
 const OrdersPage = () => {
   const { state: authState } = useAuth();
   const router = useRouter();
+
+  // State
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
   // Filters state
   const [startDate, setStartDate] = useState(() => {
@@ -61,66 +56,40 @@ const OrdersPage = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [quickFilter, setQuickFilter] = useState<number | undefined>(30);
 
-  // Mock data - In real app, this would come from API
-  const [orders] = useState<Order[]>([
-    {
-      id: 'ORD-001',
-      customerName: 'María García',
-      customerEmail: 'maria@email.com',
-      date: '2025-09-18',
-      status: 'delivered',
-      total: 59.98,
-      items: [
-        { productName: 'Champú Hidratante Premium', quantity: 1, price: 24.99 },
-        { productName: 'Mascarilla Nutritiva', quantity: 1, price: 34.99 }
-      ]
-    },
-    {
-      id: 'ORD-002',
-      customerName: 'Ana López',
-      customerEmail: 'ana@email.com',
-      date: '2025-09-17',
-      status: 'processing',
-      total: 59.98,
-      items: [
-        { productName: 'Acondicionador Reparador', quantity: 2, price: 29.99 }
-      ]
-    },
-    {
-      id: 'ORD-003',
-      customerName: 'Carmen Ruiz',
-      customerEmail: 'carmen@email.com',
-      date: '2025-09-16',
-      status: 'shipped',
-      total: 59.97,
-      items: [
-        { productName: 'Serum Anti-Frizz', quantity: 1, price: 39.99 },
-        { productName: 'Tratamiento Capilar', quantity: 1, price: 19.98 }
-      ]
-    },
-    {
-      id: 'ORD-004',
-      customerName: 'Laura Fernández',
-      customerEmail: 'laura@email.com',
-      date: '2025-09-15',
-      status: 'pending',
-      total: 89.97,
-      items: [
-        { productName: 'Kit Completo Hidratación', quantity: 1, price: 89.97 }
-      ]
-    },
-    {
-      id: 'ORD-005',
-      customerName: 'Isabel Moreno',
-      customerEmail: 'isabel@email.com',
-      date: '2025-09-14',
-      status: 'cancelled',
-      total: 24.99,
-      items: [
-        { productName: 'Champú Hidratante Premium', quantity: 1, price: 24.99 }
-      ]
+  // Fetch orders from API
+  const fetchOrders = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await ordersAPI.getAll(statusFilter || undefined, 1000, 0);
+      setOrders(data.orders);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al cargar pedidos");
+    } finally {
+      setLoading(false);
     }
-  ]);
+  }, [statusFilter]);
+
+  // Load orders on mount and when statusFilter changes
+  useEffect(() => {
+    if (authState.isAuthenticated && authState.user?.role === "admin") {
+      fetchOrders();
+    }
+  }, [authState, fetchOrders]);
+
+  // Update order status
+  const handleUpdateStatus = async (orderId: string, newStatus: string, trackingNumber?: string) => {
+    try {
+      setUpdatingStatus(orderId);
+      await ordersAPI.updateStatus(orderId, newStatus, trackingNumber);
+      // Refresh orders
+      await fetchOrders();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Error al actualizar estado");
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
 
   // Check authentication
   useEffect(() => {
@@ -143,14 +112,15 @@ const OrdersPage = () => {
   // Filter orders
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
-      const orderDate = new Date(order.date);
+      const orderDate = new Date(order.created_at);
       const start = new Date(startDate);
       const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999); // Include full end date
       
       const matchesDate = orderDate >= start && orderDate <= end;
       const matchesSearch = 
-        order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (order.user?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+        (order.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
         order.id.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = !statusFilter || order.status === statusFilter;
       
@@ -162,7 +132,11 @@ const OrdersPage = () => {
   const stats = useMemo(() => {
     const totalOrders = filteredOrders.length;
     const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.total, 0);
-    const uniqueCustomers = new Set(filteredOrders.map(order => order.customerEmail)).size;
+    const uniqueCustomers = new Set(
+      filteredOrders
+        .map(order => order.user?.email)
+        .filter(email => email)
+    ).size;
     const completedOrders = filteredOrders.filter(order => order.status === 'delivered').length;
     const completionRate = totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0;
 
@@ -230,6 +204,43 @@ const OrdersPage = () => {
 
   if (!authState.isAuthenticated || authState.user?.role !== "admin") {
     return null;
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="p-6 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-rose-500 mx-auto mb-4" />
+            <p className="text-gray-600">Cargando pedidos...</p>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="p-6 flex items-center justify-center min-h-[60vh]">
+          <div className="max-w-md w-full text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              Error al cargar pedidos
+            </h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <button
+              onClick={() => fetchOrders()}
+              className="bg-rose-500 text-white px-6 py-2 rounded-lg hover:bg-rose-600 transition-colors"
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
+      </AdminLayout>
+    );
   }
 
   return (
@@ -366,17 +377,21 @@ const OrdersPage = () => {
                       className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     >
                       <td className="py-4 px-6">
-                        <span className="font-medium text-gray-900">{order.id}</span>
+                        <span className="font-medium text-gray-900">{order.id.slice(0, 8).toUpperCase()}</span>
                       </td>
                       <td className="py-4 px-6">
                         <div>
-                          <p className="font-medium text-gray-900">{order.customerName}</p>
-                          <p className="text-sm text-gray-500">{order.customerEmail}</p>
+                          <p className="font-medium text-gray-900">
+                            {order.user?.full_name || "Cliente sin nombre"}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {order.user?.email || "Sin email"}
+                          </p>
                         </div>
                       </td>
                       <td className="py-4 px-6">
                         <span className="text-gray-700">
-                          {new Date(order.date).toLocaleDateString('es-ES')}
+                          {new Date(order.created_at).toLocaleDateString('es-ES')}
                         </span>
                       </td>
                       <td className="py-4 px-6">
@@ -393,19 +408,68 @@ const OrdersPage = () => {
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
+                            onClick={() => router.push(`/orders/${order.id}`)}
                             className="p-2 text-glow-600 hover:bg-glow-50 rounded-lg transition-colors"
                             title="Ver detalles"
                           >
                             <Eye className="w-4 h-4" />
                           </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Ver más acciones"
-                          >
-                            <ArrowUpRight className="w-4 h-4" />
-                          </motion.button>
+                          
+                          {order.status === 'pending' && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => handleUpdateStatus(order.id, 'processing')}
+                              disabled={updatingStatus === order.id}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                              title="Marcar como procesando"
+                            >
+                              {updatingStatus === order.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Edit className="w-4 h-4" />
+                              )}
+                            </motion.button>
+                          )}
+                          
+                          {order.status === 'processing' && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => {
+                                const tracking = prompt("Ingresa el número de seguimiento:");
+                                if (tracking) {
+                                  handleUpdateStatus(order.id, 'shipped', tracking);
+                                }
+                              }}
+                              disabled={updatingStatus === order.id}
+                              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50"
+                              title="Marcar como enviado"
+                            >
+                              {updatingStatus === order.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Truck className="w-4 h-4" />
+                              )}
+                            </motion.button>
+                          )}
+                          
+                          {order.status === 'shipped' && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => handleUpdateStatus(order.id, 'delivered')}
+                              disabled={updatingStatus === order.id}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                              title="Marcar como entregado"
+                            >
+                              {updatingStatus === order.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4" />
+                              )}
+                            </motion.button>
+                          )}
                         </div>
                       </td>
                     </motion.tr>
