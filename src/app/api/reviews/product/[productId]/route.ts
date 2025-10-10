@@ -7,10 +7,10 @@ import { supabase } from '@/lib/supabase';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
-    const { productId } = params;
+    const { productId } = await params;
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = parseInt(searchParams.get('offset') || '0');

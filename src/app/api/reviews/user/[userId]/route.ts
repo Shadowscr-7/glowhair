@@ -7,10 +7,10 @@ import { supabase } from '@/lib/supabase';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const { userId } = params;
+    const { userId } = await params;
     const requestUserId = request.headers.get('x-user-id') || 'temp-user-id';
     const isAdmin = request.headers.get('x-is-admin') === 'true';
 

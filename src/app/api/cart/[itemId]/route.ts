@@ -7,10 +7,10 @@ import { cartService } from '@/lib/services/orders';
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { itemId: string } }
+  { params }: { params: Promise<{ itemId: string }> }
 ) {
   try {
-    const { itemId } = params;
+    const { itemId } = await params;
     const body = await request.json();
 
     if (body.quantity === undefined) {
@@ -55,10 +55,10 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { itemId: string } }
+  { params }: { params: Promise<{ itemId: string }> }
 ) {
   try {
-    const { itemId } = params;
+    const { itemId } = await params;
     const userId = request.headers.get('x-user-id') || 'temp-user-id';
 
     const result = await cartService.removeFromCart(userId, itemId);

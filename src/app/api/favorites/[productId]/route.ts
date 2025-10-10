@@ -7,10 +7,10 @@ import { supabase } from '@/lib/supabase';
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
-    const { productId } = params;
+    const { productId } = await params;
     const userId = request.headers.get('x-user-id') || 'temp-user-id';
 
     const { error } = await supabase
@@ -39,10 +39,10 @@ export async function DELETE(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
-    const { productId } = params;
+    const { productId } = await params;
     const userId = request.headers.get('x-user-id') || 'temp-user-id';
 
     const { data, error } = await supabase
