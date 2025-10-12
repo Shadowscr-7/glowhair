@@ -45,8 +45,12 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log('🔵 API PUT /api/products/[id] - Start');
     const { id } = await params;
     const body = await request.json();
+    
+    console.log('📦 Product ID:', id);
+    console.log('📥 Body recibido:', JSON.stringify(body, null, 2));
 
     // Aquí deberías verificar que el usuario sea admin
     // const userId = await getUserIdFromSession(request);
@@ -77,15 +81,21 @@ export async function PUT(
     if (body.is_featured !== undefined) updateData.is_featured = body.is_featured;
     if (body.is_active !== undefined) updateData.is_active = body.is_active;
 
+    console.log('📊 Datos preparados para actualizar:', JSON.stringify(updateData, null, 2));
+
     const result = await productService.updateProduct(id, updateData);
+    
+    console.log('🔄 Result del servicio:', result);
 
     if (!result.success) {
+      console.error('❌ Error del servicio:', result.error);
       return NextResponse.json(
         { error: result.error },
         { status: 400 }
       );
     }
 
+    console.log('✅ API PUT /api/products/[id] - Success');
     return NextResponse.json(result.data, { status: 200 });
   } catch (error) {
     console.error('Error in PUT /api/products/[id]:', error);

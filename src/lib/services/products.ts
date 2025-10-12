@@ -314,8 +314,13 @@ export const productService = {
   // Actualizar producto
   async updateProduct(id: string, updates: Partial<Product>): Promise<ApiResponse<Product>> {
     try {
+      console.log('🔵 productService.updateProduct - Start');
+      console.log('📦 Product ID:', id);
+      console.log('📝 Updates:', JSON.stringify(updates, null, 2));
+      
       // Usar cliente admin para bypasear RLS
       const client = supabaseAdmin || supabase;
+      console.log('🔑 Usando cliente:', supabaseAdmin ? 'ADMIN' : 'REGULAR');
       
       const { data, error } = await client
         .from('glowhair_products')
@@ -328,10 +333,15 @@ export const productService = {
         `)
         .single();
 
-      if (error) throw error;
-
+      if (error) {
+        console.error('❌ Error de Supabase:', error);
+        throw error;
+      }
+      
+      console.log('✅ Producto actualizado:', data);
       return { success: true, data };
     } catch (error) {
+      console.error('❌ Exception en updateProduct:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Error al actualizar producto'

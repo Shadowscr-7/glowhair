@@ -12,22 +12,60 @@ import {
   MoreHorizontal,
   Package,
   DollarSign,
-  Star
+  Star,
+  Loader2
 } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useAdmin } from "@/context/AdminContext";
 import { useAuth } from "@/context/NewAuthContext";
 import AdminLayout from "@/components/admin/AdminLayout";
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  originalPrice?: number;
+  original_price?: number;
+  category: string | { id: string; name: string };
+  inStock?: boolean;
+  in_stock?: boolean;
+  rating: number;
+  reviews?: number;
+  review_count?: number;
+  images?: string[];
+}
 
 const AdminProductsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<number | null>(null);
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const { state, deleteProduct } = useAdmin();
   const { state: authState } = useAuth();
   const router = useRouter();
+
+  // Helper function to get category name
+  const getCategoryName = (category: string | { id: string; name: string }): string => {
+    return typeof category === 'string' ? category : category.name;
+  };
+
+  // Helper function to check if product is in stock
+  const isProductInStock = (product: Product): boolean => {
+    return product.inStock ?? product.in_stock ?? true;
+  };
+
+  // Helper function to get original price
+  const getOriginalPrice = (product: Product): number | undefined => {
+    return product.originalPrice ?? product.original_price;
+  };
+
+  // Helper function to get review count
+  const getReviewCount = (product: Product): number => {
+    return product.reviews ?? product.review_count ?? 0;
+  };
 
   // Check if user is admin
   useEffect(() => {
@@ -36,31 +74,80 @@ const AdminProductsPage = () => {
     }
   }, [authState, router]);
 
+  // Load products from API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setIsLoading(true);
+        console.log('📦 Cargando productos desde API...');
+        const response = await fetch('/api/products');
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Productos cargados:', data);
+          // La API devuelve { products: [], total: number, ... }
+          setProducts(data.products || []);
+        } else {
+          console.error('❌ Error al cargar productos:', response.status);
+          setProducts([]);
+        }
+      } catch (error) {
+        console.error('❌ Error cargando productos:', error);
+        setProducts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (authState.isAuthenticated && authState.user?.role === "admin") {
+      fetchProducts();
+    }
+  }, [authState]);
+
   if (!authState.isAuthenticated || authState.user?.role !== "admin") {
     return null;
   }
 
   // Filter products
-  const filteredProducts = state.products.filter(product => {
+  const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "Todos" || product.category === selectedCategory;
+    const categoryName = getCategoryName(product.category);
+    const matchesCategory = selectedCategory === "Todos" || categoryName === selectedCategory;
     
     return matchesSearch && matchesCategory;
   });
 
   // Get unique categories
-  const categories = ["Todos", ...Array.from(new Set(state.products.map(p => p.category)))];
+  const categories = ["Todos", ...Array.from(new Set(products.map(p => getCategoryName(p.category))))];
 
   const handleDeleteProduct = async () => {
     if (productToDelete) {
-      await deleteProduct(productToDelete);
+      try {
+        console.log('🗑️ Eliminando producto:', productToDelete);
+        const response = await fetch(`/api/products/${productToDelete}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          console.log('✅ Producto eliminado');
+          // Recargar productos
+          setProducts(prev => prev.filter(p => p.id !== productToDelete));
+        } else {
+          console.error('❌ Error al eliminar producto:', response.status);
+          alert('Error al eliminar el producto');
+        }
+      } catch (error) {
+        console.error('❌ Error eliminando producto:', error);
+        alert('Error al eliminar el producto');
+      }
+      
       setShowDeleteModal(false);
       setProductToDelete(null);
     }
   };
 
-  const confirmDelete = (productId: number) => {
+  const confirmDelete = (productId: string) => {
     setProductToDelete(productId);
     setShowDeleteModal(true);
   };
@@ -136,13 +223,28 @@ const AdminProductsPage = () => {
           </div>
         </motion.div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center justify-center py-12"
+          >
+            <div className="text-center">
+              <Loader2 className="h-12 w-12 text-glow-600 animate-spin mx-auto mb-4" />
+              <p className="text-gray-600">Cargando productos...</p>
+            </div>
+          </motion.div>
+        )}
+
         {/* Products Grid */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-        >
+        {!isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
           {filteredProducts.map((product, index) => (
             <motion.div
               key={product.id}
@@ -152,8 +254,18 @@ const AdminProductsPage = () => {
               className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
             >
               {/* Product Image */}
-              <div className="relative h-48 bg-gradient-to-br from-glow-50 to-glow-100 flex items-center justify-center">
-                <Package className="w-16 h-16 text-glow-400" />
+              <div className="relative h-64 bg-gradient-to-br from-glow-50 to-glow-100 flex items-center justify-center overflow-hidden">
+                {product.images && product.images.length > 0 ? (
+                  <Image
+                    src={product.images[0]}
+                    alt={product.name}
+                    fill
+                    className="object-contain p-4"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  />
+                ) : (
+                  <Package className="w-16 h-16 text-glow-400" />
+                )}
                 
                 {/* Actions Dropdown */}
                 <div className="absolute top-3 right-3">
@@ -190,7 +302,7 @@ const AdminProductsPage = () => {
 
                 {/* Status Badges */}
                 <div className="absolute top-3 left-3 flex flex-col space-y-2">
-                  {product.inStock ? (
+                  {isProductInStock(product) ? (
                     <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
                       En Stock
                     </span>
@@ -206,7 +318,7 @@ const AdminProductsPage = () => {
               <div className="p-6">
                 <div className="mb-2">
                   <span className="text-xs text-glow-600 bg-glow-50 px-2 py-1 rounded-full">
-                    {product.category}
+                    {getCategoryName(product.category)}
                   </span>
                 </div>
                 
@@ -223,11 +335,11 @@ const AdminProductsPage = () => {
                   <div className="flex items-center space-x-1">
                     <DollarSign size={16} className="text-gray-400" />
                     <span className="text-lg font-bold text-gray-900">
-                      €{product.price.toFixed(2)}
+                      ${product.price.toFixed(2)}
                     </span>
-                    {product.originalPrice && (
+                    {getOriginalPrice(product) && (
                       <span className="text-sm text-gray-500 line-through">
-                        €{product.originalPrice.toFixed(2)}
+                        ${getOriginalPrice(product)!.toFixed(2)}
                       </span>
                     )}
                   </div>
@@ -235,7 +347,7 @@ const AdminProductsPage = () => {
                   <div className="flex items-center space-x-1">
                     <Star size={14} className="text-yellow-400 fill-current" />
                     <span className="text-sm text-gray-600">
-                      {product.rating} ({product.reviews})
+                      {product.rating} ({getReviewCount(product)})
                     </span>
                   </div>
                 </div>
@@ -263,10 +375,11 @@ const AdminProductsPage = () => {
               </div>
             </motion.div>
           ))}
-        </motion.div>
+          </motion.div>
+        )}
 
         {/* Empty State */}
-        {filteredProducts.length === 0 && (
+        {!isLoading && filteredProducts.length === 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

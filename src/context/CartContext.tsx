@@ -8,7 +8,7 @@ interface Product {
   name: string;
   price: number;
   originalPrice?: number;
-  image: ReactNode;
+  image: string; // URL de la imagen
   category: string;
   brand: string;
   size?: string;
@@ -187,6 +187,19 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     if (savedCart) {
       try {
         const { items } = JSON.parse(savedCart);
+        
+        // Verificar si algún item tiene image como objeto (formato viejo)
+        const hasOldFormat = items.some(
+          (item: CartItem) => item.image && typeof item.image !== 'string'
+        );
+        
+        // Si tiene formato viejo, limpiar el carrito
+        if (hasOldFormat) {
+          console.log('🧹 Limpiando carrito con formato antiguo...');
+          localStorage.removeItem("glowhair-cart");
+          return;
+        }
+        
         items.forEach((item: CartItem) => {
           dispatch({
             type: "ADD_ITEM",
@@ -196,6 +209,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         });
       } catch (error) {
         console.error("Error loading cart from localStorage:", error);
+        localStorage.removeItem("glowhair-cart");
       }
     }
   }, []);
@@ -263,6 +277,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 // Cart Drawer Component
 import { ShoppingCart, X, Minus, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 const CartDrawer = () => {
   const { state, removeItem, updateQuantity, closeCart } = useCart();
@@ -319,7 +334,9 @@ const CartDrawer = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {state.items.map((item) => (
+                  {state.items.map((item) => {
+                    console.log('🛒 CartDrawer - Item:', { id: item.id, name: item.name, image: item.image, imageType: typeof item.image });
+                    return (
                     <motion.div
                       key={item.id}
                       layout
@@ -329,35 +346,45 @@ const CartDrawer = () => {
                       className="bg-gray-50 rounded-lg p-4"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="w-16 h-16 bg-gradient-to-br from-glow-50 to-glow-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <div className="w-8 h-8">
-                            {item.image}
-                          </div>
+                        <div className="w-20 h-20 bg-gradient-to-br from-glow-50 to-glow-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                          {item.image && typeof item.image === 'string' && item.image.trim() !== "" ? (
+                            <Image
+                              src={item.image}
+                              alt={item.name}
+                              fill
+                              className="object-contain p-2"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
+                              <ShoppingCart className="w-5 h-5 text-gray-400" />
+                            </div>
+                          )}
                         </div>
 
-                        <div className="flex-1">
-                          <h3 className="font-medium text-gray-900 text-sm">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-gray-900 text-sm truncate">
                             {item.name}
                           </h3>
-                          <p className="text-gray-600 text-xs">
+                          <p className="text-gray-600 text-xs truncate">
                             {item.brand} • {item.category}
                           </p>
                           <p className="text-glow-600 font-semibold text-sm mt-1">
                             ${item.price.toFixed(2)}
                           </p>
 
-                          <div className="flex items-center justify-between mt-3">
+                          <div className="flex items-center gap-3 mt-3">
                             {/* Quantity Controls */}
-                            <div className="flex items-center border border-gray-300 rounded-lg">
+                            <div className="flex items-center border border-gray-300 rounded-lg bg-white">
                               <motion.button
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
                                 onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                className="p-1 hover:bg-gray-100 transition-colors"
+                                className="p-2 hover:bg-gray-100 transition-colors rounded-l-lg"
                               >
-                                <Minus size={12} />
+                                <Minus size={14} />
                               </motion.button>
-                              <span className="px-3 py-1 text-sm border-x border-gray-300">
+                              <span className="px-3 py-1 text-sm font-medium min-w-[40px] text-center border-x border-gray-300">
                                 {item.quantity}
                               </span>
                               <motion.button
@@ -365,9 +392,9 @@ const CartDrawer = () => {
                                 whileTap={{ scale: 0.9 }}
                                 onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                 disabled={item.quantity >= item.inStock}
-                                className="p-1 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                                className="p-2 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg"
                               >
-                                <Plus size={12} />
+                                <Plus size={14} />
                               </motion.button>
                             </div>
 
@@ -376,7 +403,7 @@ const CartDrawer = () => {
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
                               onClick={() => removeItem(item.id)}
-                              className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                             >
                               <Trash2 size={16} />
                             </motion.button>
@@ -384,7 +411,8 @@ const CartDrawer = () => {
                         </div>
                       </div>
                     </motion.div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

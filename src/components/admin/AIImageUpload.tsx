@@ -3,7 +3,7 @@
  * Permite subir una imagen y automáticamente analizar el producto con OpenAI
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, X, Sparkles, Loader2 } from "lucide-react";
 import { useAIProductAnalysis } from "@/hooks/useAIProductAnalysis";
@@ -30,18 +30,34 @@ interface AIImageUploadProps {
   onImageSelected: (image: ImageFile) => void;
   onProductDataAnalyzed: (data: ProductData) => void;
   maxSizeMB?: number;
+  initialImage?: string; // URL de imagen existente para modo edición
 }
 
 const AIImageUpload: React.FC<AIImageUploadProps> = ({
   onImageSelected,
   onProductDataAnalyzed,
   maxSizeMB = 10,
+  initialImage,
 }) => {
   const [selectedImage, setSelectedImage] = useState<ImageFile | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   
   const { isAnalyzing, error: analysisError, analyzeProduct } = useAIProductAnalysis();
   const { uploadImage, uploading: isUploadingToCloud } = useCloudinaryUpload();
+
+  // Cargar imagen inicial si existe (modo edición)
+  useEffect(() => {
+    if (initialImage && !selectedImage) {
+      const imageFile: ImageFile = {
+        file: new File([], 'existing-image'),
+        preview: initialImage,
+        id: 'existing',
+        cloudinaryUrl: initialImage
+      };
+      setSelectedImage(imageFile);
+      onImageSelected(imageFile);
+    }
+  }, [initialImage, onImageSelected, selectedImage]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -234,12 +250,12 @@ const AIImageUpload: React.FC<AIImageUploadProps> = ({
             exit={{ opacity: 0, scale: 0.9 }}
             className="relative"
           >
-            <div className="relative rounded-xl overflow-hidden border-2 border-glow-200">
+            <div className="relative rounded-xl overflow-hidden border-2 border-glow-200 bg-gray-50">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={selectedImage.preview}
                 alt="Preview"
-                className="w-full h-64 object-cover"
+                className="w-full h-auto max-h-96 object-contain mx-auto"
               />
 
               {(isAnalyzing || isUploadingToCloud) && (

@@ -31,16 +31,28 @@ export function useToast() {
   );
 
   const showSuccess = useCallback((message: string) => {
-    showToast(message, "success");
-  }, [showToast]);
+    setToast({
+      message,
+      type: "success",
+      isVisible: true,
+    });
+  }, []);
 
   const showError = useCallback((message: string) => {
-    showToast(message, "error");
-  }, [showToast]);
+    setToast({
+      message,
+      type: "error",
+      isVisible: true,
+    });
+  }, []);
 
   const showWarning = useCallback((message: string) => {
-    showToast(message, "warning");
-  }, [showToast]);
+    setToast({
+      message,
+      type: "warning",
+      isVisible: true,
+    });
+  }, []);
 
   const hideToast = useCallback(() => {
     setToast((prev) => ({ ...prev, isVisible: false }));

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { 
   ArrowLeft, 
   Minus, 
@@ -238,7 +239,9 @@ export default function CartPage() {
 
                 <div className="divide-y divide-gray-200">
                   <AnimatePresence>
-                    {state.items.map((item) => (
+                    {state.items.map((item) => {
+                      console.log('🖼️ Item en carrito:', { id: item.id, name: item.name, image: item.image });
+                      return (
                       <motion.div
                         key={item.id}
                         layout
@@ -250,10 +253,20 @@ export default function CartPage() {
                       >
                         <div className="flex items-start gap-4">
                           {/* Product Image */}
-                          <div className="w-20 h-20 bg-gradient-to-br from-glow-50 to-glow-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <div className="w-12 h-12">
-                              {item.image}
-                            </div>
+                          <div className="w-20 h-20 bg-gradient-to-br from-glow-50 to-glow-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                            {item.image && typeof item.image === 'string' && item.image.trim() !== "" ? (
+                              <Image
+                                src={item.image}
+                                alt={item.name}
+                                fill
+                                className="object-contain p-2"
+                                unoptimized
+                              />
+                            ) : (
+                              <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                                <ShoppingBag className="w-6 h-6 text-gray-400" />
+                              </div>
+                            )}
                           </div>
 
                           {/* Product Info */}
@@ -316,7 +329,8 @@ export default function CartPage() {
                           </motion.button>
                         </div>
                       </motion.div>
-                    ))}
+                      );
+                    })}
                   </AnimatePresence>
                 </div>
               </motion.div>

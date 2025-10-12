@@ -60,7 +60,8 @@ function adaptProductForUI(apiProduct: APIProduct) {
     originalPrice: apiProduct.original_price,
     rating: 4.5, // Default rating - can be loaded separately with reviewsAPI
     reviewCount: 0, // Default - can be loaded separately
-    image: icon,
+    image: imageUrl || "", // Usar URL de imagen o string vacío
+    imageIcon: icon, // Guardar el icono para fallback en el card
     image_url: imageUrl, // Add image URL for ProductCard
     category: categoryName,
     brand: brandName,

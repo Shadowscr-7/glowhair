@@ -69,9 +69,26 @@ export default function ProductDetailPage() {
       // TODO: Implement cart API
       console.log("Add to cart", product.id, quantity);
       
+      // Adaptar producto de la API al formato del carrito
+      const cartProduct = {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        originalPrice: product.originalPrice,
+        image: product.images?.[0] || "", // Primera imagen o string vacío
+        category: product.category,
+        brand: product.brand,
+        size: product.size || "",
+        inStock: product.stock || 0
+      };
+      
+      console.log('🛒 Agregando al carrito:', cartProduct);
+      console.log('📸 URL de imagen:', cartProduct.image);
+      console.log('📦 Producto completo:', product);
+      console.log('🖼️ Array de imágenes:', product.images);
+      
       // Update local context
-      // @ts-expect-error - TODO: Fix Product type compatibility
-      addItem(product, quantity);
+      addItem(cartProduct, quantity);
 
       setShowSuccessMessage(true);
       setTimeout(() => setShowSuccessMessage(false), 3000);

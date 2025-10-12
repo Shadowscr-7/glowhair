@@ -16,7 +16,8 @@ interface Product {
   originalPrice?: number;
   rating: number;
   reviewCount: number;
-  image?: React.ReactNode;
+  image?: string; // Ahora es string (URL) en lugar de ReactNode
+  imageIcon?: React.ReactNode; // Nuevo: icono de fallback
   image_url?: string;
   category: string;
   brand?: string;
@@ -54,18 +55,28 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
     e.stopPropagation();
     setIsAddingToCart(true);
     
+    // Obtener la URL de la imagen (priorizar image_url sobre image)
+    let imageUrl = "";
+    if (product.image_url && typeof product.image_url === 'string') {
+      imageUrl = product.image_url;
+    } else if (typeof product.image === 'string') {
+      imageUrl = product.image;
+    }
+    
     // Convert product to the format expected by cart
     const cartProduct = {
       id: product.id,
       name: product.name,
       price: product.price,
       originalPrice: product.originalPrice,
-      image: product.image,
+      image: imageUrl,
       category: product.category,
       brand: product.brand || "GlowHair",
       size: "300ml", // Default size
       inStock: 50 // Default stock
     };
+    
+    console.log('🛒 ProductCard - Agregando al carrito:', cartProduct);
     
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -167,7 +178,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
             </div>
           ) : (
             <div className="w-20 h-20 sm:w-24 sm:h-24">
-              {product.image}
+              {product.imageIcon || product.image}
             </div>
           )}
         </motion.div>        {/* Quick Actions - Mobile: Always visible, Desktop: On hover */}
