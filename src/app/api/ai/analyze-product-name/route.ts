@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+const openai = new OpenAI({
+  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
 });
 
 export async function POST(request: NextRequest) {
@@ -18,14 +18,17 @@ export async function POST(request: NextRequest) {
 
     console.log('🤖 Analizando producto por nombre:', productName);
 
-    // Llamar a Claude AI para analizar el producto basándose en su nombre
-    const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 2048,
+    // Llamar a OpenAI para analizar el producto basándose en su nombre
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
       messages: [
         {
+          role: 'system',
+          content: 'Eres un experto en productos capilares. Respondes SOLO con JSON válido, sin texto adicional.',
+        },
+        {
           role: 'user',
-          content: `Eres un experto en productos capilares. Te voy a dar el nombre de un producto capilar y necesito que me proporciones información detallada sobre él.
+          content: `Te voy a dar el nombre de un producto capilar y necesito que me proporciones información detallada sobre él.
 
 Nombre del producto: "${productName}"
 
@@ -45,23 +48,19 @@ IMPORTANTE:
 - Las instrucciones de uso deben ser claras y paso a paso
 - Los ingredientes deben tener sus funciones explicadas
 - Responde SOLO con el JSON, sin texto adicional
-- Si no conoces el producto exacto, infiere la información basándote en productos similares de la misma categoría`,
+- Si no conoces el producto exacto, infiere la información basándose en productos similares de la misma categoría`,
         },
       ],
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
     });
 
-    const responseText =
-      message.content[0].type === 'text' ? message.content[0].text : '';
+    const responseText = completion.choices[0].message.content || '';
 
-    console.log('📄 Respuesta de Claude:', responseText);
+    console.log('📄 Respuesta de OpenAI:', responseText);
 
-    // Extraer JSON de la respuesta
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('No se pudo extraer JSON de la respuesta');
-    }
-
-    const productData = JSON.parse(jsonMatch[0]);
+    // Parsear JSON de la respuesta
+    const productData = JSON.parse(responseText);
 
     console.log('✅ Datos del producto parseados:', productData);
 

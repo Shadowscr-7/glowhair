@@ -226,18 +226,29 @@ const NewProductPage = () => {
 
     setIsAnalyzingByName(true);
     try {
+      console.log('🤖 Analizando producto por nombre:', formData.name);
+      
       const response = await fetch('/api/ai/analyze-product-name', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productName: formData.name }),
       });
 
-      if (!response.ok) throw new Error('Error al analizar el producto');
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response ok:', response.ok);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        console.error('❌ Error response:', errorData);
+        throw new Error(errorData.error || `Error al analizar el producto (${response.status})`);
+      }
 
       const data = await response.json();
+      console.log('✅ Datos recibidos:', data);
       
       // Buscar el ID de la categoría
       const categoryId = getCategoryIdByName(data.category);
+      console.log('🎯 Category ID:', categoryId);
       
       // Actualizar formulario con los datos de IA
       setFormData(prev => ({
@@ -253,8 +264,12 @@ const NewProductPage = () => {
       setIsAIDataLoaded(true);
       showSuccess("¡Información del producto cargada exitosamente!");
     } catch (error) {
-      console.error('Error:', error);
-      showError("Error al analizar el producto con IA");
+      console.error('❌ Error completo:', error);
+      showError(
+        error instanceof Error 
+          ? error.message 
+          : "Error al analizar el producto con IA"
+      );
     } finally {
       setIsAnalyzingByName(false);
     }
