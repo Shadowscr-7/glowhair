@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase, supabaseAdmin } from '../supabase';
 import type { Product, Category, Brand, ApiResponse, PaginatedResponse } from '@/types';
 
 // ==========================================
@@ -18,13 +18,19 @@ export const productService = {
     limit?: number;
   }): Promise<ApiResponse<PaginatedResponse<Product>>> {
     try {
-      let query = supabase
-        .from('products')
+      console.log('🔵 productService.getProducts - Inicio');
+      console.log('📦 Filtros:', filters);
+      
+      // Usar cliente admin para evitar problemas de RLS
+      const client = supabaseAdmin || supabase;
+      
+      let query = client
+        .from('glowhair_products')
         .select(`
           *,
-          category:categories(id, name),
-          brand:brands(id, name)
-        `)
+          category:glowhair_categories(id, name),
+          brand:glowhair_brands(id, name)
+        `, { count: 'exact' })  // Agregar count para obtener el total
         .eq('is_active', true);
 
       // Aplicar filtros
@@ -73,8 +79,17 @@ export const productService = {
       const { data, error, count } = await query
         .range(offset, offset + limit - 1);
 
-      if (error) throw error;
+      console.log('📊 Respuesta de Supabase:');
+      console.log('  - Data:', data ? `${data.length} productos` : 'null');
+      console.log('  - Count:', count);
+      console.log('  - Error:', error);
 
+      if (error) {
+        console.error('❌ Error de Supabase:', error);
+        throw error;
+      }
+
+      console.log('✅ Productos obtenidos exitosamente');
       return {
         success: true,
         data: {
@@ -86,6 +101,7 @@ export const productService = {
         }
       };
     } catch (error) {
+      console.error('❌ Error en getProducts:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Error al obtener productos'
@@ -96,21 +112,49 @@ export const productService = {
   // Obtener producto por ID
   async getProductById(id: string): Promise<ApiResponse<Product>> {
     try {
-      const { data, error } = await supabase
-        .from('products')
+      console.log('🔵 productService.getProductById - ID:', id);
+      
+      // Si estamos en el cliente, usar el API route
+      if (typeof window !== 'undefined') {
+        console.log('🌐 Usando API route desde el cliente');
+        const response = await fetch(`/api/products/${id}`);
+        
+        if (!response.ok) {
+          console.error('❌ API response not ok:', response.status);
+          throw new Error('Producto no encontrado');
+        }
+        
+        const data = await response.json();
+        console.log('✅ productService.getProductById - Success from API');
+        return { success: true, data };
+      }
+      
+      // Si estamos en el servidor, usar Supabase directamente
+      console.log('🖥️ Usando Supabase desde el servidor');
+      const client = supabaseAdmin || supabase;
+      
+      const { data, error } = await client
+        .from('glowhair_products')
         .select(`
           *,
-          category:categories(id, name),
-          brand:brands(id, name)
+          category:glowhair_categories(id, name),
+          brand:glowhair_brands(id, name)
         `)
         .eq('id', id)
         .eq('is_active', true)
         .single();
 
-      if (error) throw error;
+      console.log('📊 productService.getProductById - Response:', { data, error });
 
+      if (error) {
+        console.error('❌ productService.getProductById - Error:', error);
+        throw error;
+      }
+
+      console.log('✅ productService.getProductById - Success from Supabase');
       return { success: true, data };
     } catch (error) {
+      console.error('❌ productService.getProductById - Exception:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Producto no encontrado'
@@ -122,11 +166,11 @@ export const productService = {
   async getProductBySlug(slug: string): Promise<ApiResponse<Product>> {
     try {
       const { data, error } = await supabase
-        .from('products')
+        .from('glowhair_products')
         .select(`
           *,
-          category:categories(id, name),
-          brand:brands(id, name)
+          category:glowhair_categories(id, name),
+          brand:glowhair_brands(id, name)
         `)
         .eq('slug', slug)
         .eq('is_active', true)
@@ -147,11 +191,11 @@ export const productService = {
   async getRelatedProducts(productId: string, categoryId?: string): Promise<ApiResponse<Product[]>> {
     try {
       let query = supabase
-        .from('products')
+        .from('glowhair_products')
         .select(`
           *,
-          category:categories(id, name),
-          brand:brands(id, name)
+          category:glowhair_categories(id, name),
+          brand:glowhair_brands(id, name)
         `)
         .eq('is_active', true)
         .neq('id', productId)
@@ -178,11 +222,11 @@ export const productService = {
   async getFeaturedProducts(limit = 6): Promise<ApiResponse<Product[]>> {
     try {
       const { data, error } = await supabase
-        .from('products')
+        .from('glowhair_products')
         .select(`
           *,
-          category:categories(id, name),
-          brand:brands(id, name)
+          category:glowhair_categories(id, name),
+          brand:glowhair_brands(id, name)
         `)
         .eq('is_active', true)
         .eq('is_featured', true)
@@ -204,11 +248,11 @@ export const productService = {
   async searchProducts(query: string, limit = 10): Promise<ApiResponse<Product[]>> {
     try {
       const { data, error } = await supabase
-        .from('products')
+        .from('glowhair_products')
         .select(`
           *,
-          category:categories(id, name),
-          brand:brands(id, name)
+          category:glowhair_categories(id, name),
+          brand:glowhair_brands(id, name)
         `)
         .eq('is_active', true)
         .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
@@ -229,20 +273,37 @@ export const productService = {
   // Crear nuevo producto
   async createProduct(productData: Partial<Product>): Promise<ApiResponse<Product>> {
     try {
-      const { data, error } = await supabase
-        .from('products')
+      console.log('🟢 productService.createProduct - Inicio');
+      console.log('📦 Datos recibidos:', JSON.stringify(productData, null, 2));
+
+      // Usar cliente admin para bypasear RLS y evitar recursión infinita
+      const client = supabaseAdmin || supabase;
+      
+      const { data, error } = await client
+        .from('glowhair_products')
         .insert(productData)
         .select(`
           *,
-          category:categories(id, name),
-          brand:brands(id, name)
+          category:glowhair_categories(id, name),
+          brand:glowhair_brands(id, name)
         `)
         .single();
 
-      if (error) throw error;
+      console.log('📊 Respuesta de Supabase:');
+      console.log('  - Data:', data);
+      console.log('  - Error:', error);
 
+      if (error) {
+        console.error('❌ Error de Supabase:', error);
+        throw error;
+      }
+
+      console.log('✅ Producto creado exitosamente');
       return { success: true, data };
     } catch (error) {
+      console.error('❌ Error en createProduct:', error);
+      console.error('  - Message:', error instanceof Error ? error.message : 'Unknown');
+      console.error('  - Full error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Error al crear producto'
@@ -253,14 +314,17 @@ export const productService = {
   // Actualizar producto
   async updateProduct(id: string, updates: Partial<Product>): Promise<ApiResponse<Product>> {
     try {
-      const { data, error } = await supabase
-        .from('products')
+      // Usar cliente admin para bypasear RLS
+      const client = supabaseAdmin || supabase;
+      
+      const { data, error } = await client
+        .from('glowhair_products')
         .update(updates)
         .eq('id', id)
         .select(`
           *,
-          category:categories(id, name),
-          brand:brands(id, name)
+          category:glowhair_categories(id, name),
+          brand:glowhair_brands(id, name)
         `)
         .single();
 
@@ -278,8 +342,11 @@ export const productService = {
   // Eliminar producto (soft delete)
   async deleteProduct(id: string): Promise<ApiResponse<void>> {
     try {
-      const { error } = await supabase
-        .from('products')
+      // Usar cliente admin para bypasear RLS
+      const client = supabaseAdmin || supabase;
+      
+      const { error } = await client
+        .from('glowhair_products')
         .update({ is_active: false })
         .eq('id', id);
 
@@ -303,16 +370,30 @@ export const categoryService = {
   // Obtener todas las categorías
   async getCategories(): Promise<ApiResponse<Category[]>> {
     try {
-      const { data, error } = await supabase
-        .from('categories')
+      console.log('📂 categoryService.getCategories - Inicio');
+      
+      // Usar cliente admin para evitar problemas de RLS
+      const client = supabaseAdmin || supabase;
+      
+      const { data, error } = await client
+        .from('glowhair_categories')
         .select('*')
         .eq('is_active', true)
         .order('display_order', { ascending: true });
 
-      if (error) throw error;
+      console.log('📊 Respuesta de Supabase:');
+      console.log('  - Data:', data ? `${data.length} categorías` : 'null');
+      console.log('  - Error:', error);
 
+      if (error) {
+        console.error('❌ Error de Supabase:', error);
+        throw error;
+      }
+
+      console.log('✅ Categorías obtenidas exitosamente:', data?.length || 0);
       return { success: true, data: data || [] };
     } catch (error) {
+      console.error('❌ Error en getCategories:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Error al obtener categorías'
@@ -323,8 +404,11 @@ export const categoryService = {
   // Obtener categoría por ID
   async getCategoryById(id: string): Promise<ApiResponse<Category>> {
     try {
-      const { data, error } = await supabase
-        .from('categories')
+      // Usar cliente admin para evitar problemas de RLS
+      const client = supabaseAdmin || supabase;
+      
+      const { data, error } = await client
+        .from('glowhair_categories')
         .select('*')
         .eq('id', id)
         .eq('is_active', true)
@@ -350,8 +434,11 @@ export const brandService = {
   // Obtener todas las marcas
   async getBrands(): Promise<ApiResponse<Brand[]>> {
     try {
-      const { data, error } = await supabase
-        .from('brands')
+      // Usar cliente admin para evitar problemas de RLS
+      const client = supabaseAdmin || supabase;
+      
+      const { data, error } = await client
+        .from('glowhair_brands')
         .select('*')
         .eq('is_active', true)
         .order('name', { ascending: true });
@@ -370,8 +457,11 @@ export const brandService = {
   // Obtener marca por ID
   async getBrandById(id: string): Promise<ApiResponse<Brand>> {
     try {
-      const { data, error } = await supabase
-        .from('brands')
+      // Usar cliente admin para evitar problemas de RLS
+      const client = supabaseAdmin || supabase;
+      
+      const { data, error } = await client
+        .from('glowhair_brands')
         .select('*')
         .eq('id', id)
         .eq('is_active', true)

@@ -17,6 +17,9 @@ export const useCloudinaryUpload = ({ onSuccess, onError }: UseCloudinaryUploadP
     setUploading(true);
     
     try {
+      console.log('📤 Subiendo imagen a Cloudinary vía API...');
+      console.log('  - File:', file.name, `(${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+
       const formData = new FormData();
       formData.append('file', file);
 
@@ -26,27 +29,35 @@ export const useCloudinaryUpload = ({ onSuccess, onError }: UseCloudinaryUploadP
       });
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        console.error('❌ Error de la API:', errorData);
+        throw new Error(errorData.error || 'Error al subir la imagen');
       }
 
       const data = await response.json();
       
-      if (data.success) {
-        const newImage = {
-          url: data.url,
-          publicId: data.public_id,
-          id: data.public_id
-        };
-        
-        setUploadedImages(prev => [...prev, newImage]);
-        onSuccess?.(data.url, data.public_id);
-        
-        return data.url;
-      } else {
+      if (!data.success) {
         throw new Error(data.error || 'Upload failed');
       }
+      
+      console.log('✅ Imagen subida exitosamente:');
+      console.log('  - URL:', data.url);
+      console.log('  - Public ID:', data.public_id);
+      console.log('  - Dimensiones:', `${data.width}x${data.height}`);
+
+      const newImage = {
+        url: data.url,
+        publicId: data.public_id,
+        id: data.public_id
+      };
+      
+      setUploadedImages(prev => [...prev, newImage]);
+      onSuccess?.(data.url, data.public_id);
+      
+      return data.url;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      const errorMessage = error instanceof Error ? error.message : 'Error al subir imagen';
+      console.error('❌ Error uploading to Cloudinary:', error);
       onError?.(errorMessage);
       return null;
     } finally {

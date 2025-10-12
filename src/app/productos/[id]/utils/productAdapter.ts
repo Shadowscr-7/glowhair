@@ -25,6 +25,16 @@ export const adaptProductForUI = (apiProduct: APIProduct): UIProduct => {
     isNew: isNew(),
     isOnSale: !!apiProduct.original_price && apiProduct.original_price > apiProduct.price,
     description: apiProduct.description || '',
-    stock: apiProduct.stock || 0
+    stock: apiProduct.stock || 0,
+    // Nuevos campos
+    images: apiProduct.images || [],
+    benefits: apiProduct.benefits || [],
+    ingredients: Array.isArray(apiProduct.ingredients) 
+      ? apiProduct.ingredients.join(', ') 
+      : apiProduct.ingredients || '',
+    usageInstructions: apiProduct.usage_instructions || '',
+    features: [],
+    hairTypes: apiProduct.hair_types || [],
+    size: ''
   };
 };

@@ -69,6 +69,7 @@ export interface Product {
   price: number;
   original_price?: number;
   image?: string;
+  images?: string[]; // Array de URLs de imágenes
   stock: number;
   is_active: boolean;
   is_featured: boolean;

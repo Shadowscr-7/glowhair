@@ -62,8 +62,10 @@ export default function LoginPage() {
     const result = await signIn(formData.email, formData.password);
     
     if (result.success) {
-      // La redirección se maneja automáticamente por el useEffect
-      router.push("/");
+      // Esperar un momento para que Supabase guarde la sesión
+      await new Promise(resolve => setTimeout(resolve, 500));
+      // Forzar recarga completa de la página para que el contexto se actualice
+      window.location.href = "/";
     } else {
       setErrors({ general: result.error || "Email o contraseña incorrectos" });
     }

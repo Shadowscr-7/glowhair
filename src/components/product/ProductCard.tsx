@@ -145,28 +145,28 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
       </motion.button>
 
       {/* Product Image */}
-      <div className="relative h-40 sm:h-48 bg-gradient-to-br from-glow-50 to-glow-100 flex items-center justify-center p-6 sm:p-8">
+      <div className="relative h-48 sm:h-56 bg-gradient-to-br from-glow-50 to-glow-100 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
         <motion.div
           animate={{
-            scale: isHovered ? 1.1 : 1,
-            rotate: isHovered ? 5 : 0
+            scale: isHovered ? 1.05 : 1,
+            rotate: isHovered ? 2 : 0
           }}
           transition={{ duration: 0.3 }}
-          className="w-16 h-16 sm:w-20 sm:h-20"
+          className="w-full h-full flex items-center justify-center"
         >
           {product.image_url ? (
-            <Image
-              src={product.image_url}
-              alt={product.name}
-              width={80}
-              height={80}
-              className="w-full h-full object-cover rounded-lg"
-              onError={() => {
-                // Fallback handled by Next.js Image component
-              }}
-            />
+            <div className="relative w-full h-full bg-white rounded-lg shadow-sm p-2">
+              <Image
+                src={product.image_url}
+                alt={product.name}
+                fill
+                className="object-contain rounded-md"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                priority={false}
+              />
+            </div>
           ) : (
-            <div>
+            <div className="w-20 h-20 sm:w-24 sm:h-24">
               {product.image}
             </div>
           )}

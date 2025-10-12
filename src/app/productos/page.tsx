@@ -22,7 +22,7 @@ function adaptProductForUI(apiProduct: APIProduct) {
     ? apiProduct.brand?.name || 'GlowHair'
     : apiProduct.brand || 'GlowHair';
 
-  // Select icon based on category
+  // Select icon based on category (fallback if no image)
   let icon = <ShampooIcon className="w-full h-full" />;
   const lowerCategory = categoryName.toLowerCase();
   if (lowerCategory.includes('acondicionador') || lowerCategory.includes('tratamiento')) {
@@ -37,6 +37,22 @@ function adaptProductForUI(apiProduct: APIProduct) {
     icon = <SprayIcon className="w-full h-full" />;
   }
 
+  // Get image URL from images array (skip blob URLs)
+  let imageUrl: string | undefined;
+  if (apiProduct.images && Array.isArray(apiProduct.images) && apiProduct.images.length > 0) {
+    // Filter out blob URLs and get the first valid image
+    const validImages = apiProduct.images.filter((img: string) => 
+      img && typeof img === 'string' && !img.startsWith('blob:')
+    );
+    imageUrl = validImages[0];
+  }
+
+  // Truncate description to 150 characters
+  let truncatedDescription = apiProduct.description;
+  if (truncatedDescription && truncatedDescription.length > 150) {
+    truncatedDescription = truncatedDescription.substring(0, 150) + '...';
+  }
+
   return {
     id: apiProduct.id,
     name: apiProduct.name,
@@ -45,11 +61,12 @@ function adaptProductForUI(apiProduct: APIProduct) {
     rating: 4.5, // Default rating - can be loaded separately with reviewsAPI
     reviewCount: 0, // Default - can be loaded separately
     image: icon,
+    image_url: imageUrl, // Add image URL for ProductCard
     category: categoryName,
     brand: brandName,
     isNew: false, // Could calculate from created_at if needed
     isOnSale: !!apiProduct.original_price && apiProduct.original_price > apiProduct.price,
-    description: apiProduct.description,
+    description: truncatedDescription,
     ingredients: [] as string[], // Not available in current API schema
     hairType: [] as string[] // Not available in current API schema
   };

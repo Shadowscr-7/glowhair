@@ -13,6 +13,14 @@ export interface UIProduct {
   isOnSale: boolean;
   description: string;
   stock: number;
+  // Nuevos campos para detalle completo
+  images?: string[];
+  benefits?: string[];
+  ingredients?: string;
+  usageInstructions?: string;
+  features?: string[];
+  hairTypes?: string[];
+  size?: string;
 }
 
 // Product state for the page

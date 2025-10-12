@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAdmin } from "@/context/AdminContext";
 import { useAuth } from "@/context/NewAuthContext";
 import AdminLayout from "@/components/admin/AdminLayout";
-import ImageUpload, { ImageFile } from "@/components/admin/ImageUpload";
+import AIImageUpload, { ImageFile } from "@/components/admin/AIImageUpload";
+import Toast from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
+import type { Category } from "@/types";
 
 interface ProductFormData {
   name: string;
@@ -15,6 +17,7 @@ interface ProductFormData {
   price: number;
   originalPrice: number;
   category: string;
+  categoryId: string;
   benefits: string[];
   usage: string;
   ingredients: string;
@@ -28,6 +31,7 @@ const NewProductPage = () => {
     price: 0,
     originalPrice: 0,
     category: "",
+    categoryId: "",
     benefits: [""],
     usage: "",
     ingredients: "",
@@ -36,11 +40,35 @@ const NewProductPage = () => {
   
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [images, setImages] = useState<ImageFile[]>([]);
+  const [isAnalyzingByName, setIsAnalyzingByName] = useState(false);
+  const [productImage, setProductImage] = useState<ImageFile | null>(null);
+  const [isAIDataLoaded, setIsAIDataLoaded] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
   
-  const { addProduct } = useAdmin();
+  const { toast, showSuccess, showError, hideToast } = useToast();
   const { state: authState } = useAuth();
   const router = useRouter();
+
+  // Cargar categorías desde la API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        console.log('📂 Cargando categorías desde API...');
+        const response = await fetch('/api/categories');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Categorías cargadas:', data);
+          setCategories(data);
+        } else {
+          console.error('❌ Error al cargar categorías:', response.status);
+        }
+      } catch (error) {
+        console.error('❌ Error cargando categorías:', error);
+      }
+    };
+    
+    fetchCategories();
+  }, []);
 
   // Check if user is admin
   useEffect(() => {
@@ -106,25 +134,61 @@ const NewProductPage = () => {
     setIsLoading(true);
 
     try {
-      const newProduct = {
-        name: formData.name.trim(),
-        description: formData.description.trim(),
+      console.log('📝 Guardando producto...');
+      
+      // Incluir la imagen de Cloudinary si existe
+      const cloudinaryImageUrl = productImage?.cloudinaryUrl;
+      console.log('🖼️ Imagen de Cloudinary incluida:', cloudinaryImageUrl);
+
+      const productData = {
+        name: formData.name,
+        description: formData.description,
         price: formData.price,
-        originalPrice: formData.originalPrice > 0 ? formData.originalPrice : undefined,
-        category: formData.category,
-        benefits: formData.benefits.filter(benefit => benefit.trim()),
-        howToUse: formData.usage.trim(),
-        ingredients: formData.ingredients.trim().split(',').map(ing => ing.trim()).filter(ing => ing),
-        inStock: formData.inStock,
+        original_price: formData.originalPrice > 0 ? formData.originalPrice : undefined,
+        category_id: formData.categoryId,
+        stock: formData.inStock ? 100 : 0,
+        benefits: formData.benefits.filter(b => b.trim()),
+        usage_instructions: formData.usage,
+        ingredients: formData.ingredients,
+        images: cloudinaryImageUrl ? [cloudinaryImageUrl] : [],
+        is_active: true,
         rating: 0,
-        reviews: 0,
-        image: images.length > 0 ? images[0].preview : "/images/placeholder-product.jpg" // Use first uploaded image or placeholder
+        review_count: 0
       };
 
-      await addProduct(newProduct);
-      router.push("/admin/productos");
+      console.log('📦 Datos a enviar:', productData);
+
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      });
+
+      console.log('📡 Status de respuesta:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al guardar el producto');
+      }
+
+      const responseData = await response.json();
+      console.log('📥 Respuesta de la API:', responseData);
+
+      showSuccess("Producto creado exitosamente");
+      
+      // Redirigir después de un momento
+      setTimeout(() => {
+        router.push("/admin/productos");
+      }, 1500);
     } catch (error) {
-      console.error("Error adding product:", error);
+      console.error("❌ Error completo al agregar producto:", error);
+      showError(
+        error instanceof Error 
+          ? error.message 
+          : "Error al crear el producto. Por favor intenta nuevamente."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -153,15 +217,119 @@ const NewProductPage = () => {
     }
   };
 
-  const categories = [
-    "Champús",
-    "Acondicionadores",
-    "Mascarillas",
-    "Aceites",
-    "Serums",
-    "Herramientas",
-    "Kits"
-  ];
+  // Analizar producto por nombre usando IA
+  const handleAnalyzeByName = async () => {
+    if (!formData.name.trim()) {
+      showError("Por favor ingresa el nombre del producto primero");
+      return;
+    }
+
+    setIsAnalyzingByName(true);
+    try {
+      const response = await fetch('/api/ai/analyze-product-name', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productName: formData.name }),
+      });
+
+      if (!response.ok) throw new Error('Error al analizar el producto');
+
+      const data = await response.json();
+      
+      // Buscar el ID de la categoría
+      const categoryId = getCategoryIdByName(data.category);
+      
+      // Actualizar formulario con los datos de IA
+      setFormData(prev => ({
+        ...prev,
+        description: data.description,
+        category: data.category,
+        categoryId: categoryId,
+        benefits: data.benefits.length > 0 ? data.benefits : [""],
+        usage: data.usage,
+        ingredients: data.ingredients,
+      }));
+      
+      setIsAIDataLoaded(true);
+      showSuccess("¡Información del producto cargada exitosamente!");
+    } catch (error) {
+      console.error('Error:', error);
+      showError("Error al analizar el producto con IA");
+    } finally {
+      setIsAnalyzingByName(false);
+    }
+  };
+
+  // Helper para mapear categoría a ID
+  const getCategoryIdByName = (categoryName: string): string => {
+    console.log('🔍 Buscando categoría:', categoryName);
+    
+    if (categories.length === 0) {
+      console.warn('⚠️ No hay categorías cargadas aún');
+      return '';
+    }
+    
+    const searchTerm = categoryName.toLowerCase().trim();
+    
+    // 1. Match exacto
+    let category = categories.find(cat => 
+      cat.name.toLowerCase() === searchTerm
+    );
+    
+    if (category) {
+      console.log('✅ Match exacto encontrado:', category);
+      return category.id;
+    }
+    
+    // 2. Match parcial
+    category = categories.find(cat => 
+      cat.name.toLowerCase().includes(searchTerm) ||
+      searchTerm.includes(cat.name.toLowerCase())
+    );
+    
+    if (category) {
+      console.log('✅ Match parcial encontrado:', category);
+      return category.id;
+    }
+    
+    // 3. Fallback: primera categoría
+    console.warn('⚠️ No se encontró match, usando primera categoría');
+    return categories[0]?.id || '';
+  };
+
+  // Handler cuando se selecciona/sube una imagen
+  const handleImageSelected = (image: ImageFile) => {
+    setProductImage(image);
+  };
+
+  // Handler cuando la IA analiza el producto desde la imagen
+  const handleProductDataAnalyzed = (data: {
+    name: string;
+    description: string;
+    category: string;
+    benefits: string[];
+    usage: string;
+    ingredients: string;
+  }) => {
+    console.log('🤖 IA completó análisis:', data);
+    
+    // Buscar el ID de la categoría por nombre
+    const categoryId = getCategoryIdByName(data.category);
+    
+    console.log('🎯 Category ID seleccionado:', categoryId);
+    
+    setFormData(prev => ({
+      ...prev,
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      categoryId: categoryId,
+      benefits: data.benefits.length > 0 ? data.benefits : [""],
+      usage: data.usage,
+      ingredients: data.ingredients,
+    }));
+    setIsAIDataLoaded(true);
+  };
 
   return (
     <AdminLayout>
@@ -195,6 +363,12 @@ const NewProductPage = () => {
           onSubmit={handleSubmit}
           className="space-y-8"
         >
+          {/* AI Image Upload - Primero */}
+          <AIImageUpload 
+            onImageSelected={handleImageSelected}
+            onProductDataAnalyzed={handleProductDataAnalyzed}
+          />
+
           {/* Basic Information */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Información Básica</h2>
@@ -205,18 +379,50 @@ const NewProductPage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Nombre del Producto *
                 </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 focus:border-transparent ${
-                    errors.name ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Ej: Champú Hidratante Premium"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    className={`flex-1 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 focus:border-transparent ${
+                      errors.name ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="Ej: Champú Hidratante Premium"
+                  />
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleAnalyzeByName}
+                    disabled={!formData.name.trim() || isAnalyzingByName}
+                    className="px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium shadow-lg transition-all"
+                    title="Analizar producto con IA basándose en el nombre"
+                  >
+                    {isAnalyzingByName ? (
+                      <>
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                        />
+                        <span className="hidden sm:inline">Analizando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span className="hidden sm:inline">IA</span>
+                      </>
+                    )}
+                  </motion.button>
+                </div>
                 {errors.name && (
                   <p className="text-red-600 text-sm mt-1">{errors.name}</p>
                 )}
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 Escribe o edita el nombre y presiona el botón IA para obtener automáticamente la información del producto
+                </p>
               </div>
 
               {/* Category */}
@@ -225,16 +431,24 @@ const NewProductPage = () => {
                   Categoría *
                 </label>
                 <select
-                  value={formData.category}
-                  onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 focus:border-transparent ${
+                  value={formData.categoryId}
+                  onChange={(e) => {
+                    const selectedCategory = categories.find(cat => cat.id === e.target.value);
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      category: selectedCategory?.name || '',
+                      categoryId: e.target.value
+                    }));
+                  }}
+                  disabled={categories.length === 0}
+                  className={`w-full px-4 py-3 border rounded-lg text-purple-600 focus:outline-none focus:ring-2 focus:ring-glow-500 focus:border-transparent ${
                     errors.category ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                  } ${categories.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <option value="">Seleccionar categoría</option>
+                  <option value="">{categories.length === 0 ? 'Cargando categorías...' : 'Seleccionar categoría'}</option>
                   {categories.map(category => (
-                    <option key={category} value={category}>
-                      {category}
+                    <option key={category.id} value={category.id}>
+                      {category.name}
                     </option>
                   ))}
                 </select>
@@ -279,12 +493,6 @@ const NewProductPage = () => {
               </div>
             </div>
           </div>
-
-          {/* Product Images */}
-          <ImageUpload 
-            images={images}
-            onImagesChange={setImages}
-          />
 
           {/* Pricing */}
           <div className="bg-white rounded-xl shadow-lg p-6">
@@ -447,6 +655,16 @@ const NewProductPage = () => {
           </div>
         </motion.form>
       </div>
+
+      {/* Toast Notifications */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          isVisible={true}
+          onClose={hideToast}
+        />
+      )}
     </AdminLayout>
   );
 };

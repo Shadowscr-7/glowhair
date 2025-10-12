@@ -44,6 +44,10 @@ const OrdersPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [newStatus, setNewStatus] = useState('');
+  const [trackingNumber, setTrackingNumber] = useState('');
 
   // Filters state
   const [startDate, setStartDate] = useState(() => {
@@ -77,13 +81,36 @@ const OrdersPage = () => {
     }
   }, [authState, fetchOrders]);
 
+  // Open status modal
+  const openStatusModal = (order: Order) => {
+    setSelectedOrder(order);
+    setNewStatus(order.status);
+    setTrackingNumber(order.tracking_number || '');
+    setShowStatusModal(true);
+  };
+
+  // Close status modal
+  const closeStatusModal = () => {
+    setShowStatusModal(false);
+    setSelectedOrder(null);
+    setNewStatus('');
+    setTrackingNumber('');
+  };
+
   // Update order status
-  const handleUpdateStatus = async (orderId: string, newStatus: string, trackingNumber?: string) => {
+  const handleUpdateStatus = async () => {
+    if (!selectedOrder || !newStatus) return;
+    
     try {
-      setUpdatingStatus(orderId);
-      await ordersAPI.updateStatus(orderId, newStatus, trackingNumber);
+      setUpdatingStatus(selectedOrder.id);
+      await ordersAPI.updateStatus(
+        selectedOrder.id, 
+        newStatus, 
+        trackingNumber || undefined
+      );
       // Refresh orders
       await fetchOrders();
+      closeStatusModal();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Error al actualizar estado");
     } finally {
@@ -415,61 +442,15 @@ const OrdersPage = () => {
                             <Eye className="w-4 h-4" />
                           </motion.button>
                           
-                          {order.status === 'pending' && (
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => handleUpdateStatus(order.id, 'processing')}
-                              disabled={updatingStatus === order.id}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-                              title="Marcar como procesando"
-                            >
-                              {updatingStatus === order.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Edit className="w-4 h-4" />
-                              )}
-                            </motion.button>
-                          )}
-                          
-                          {order.status === 'processing' && (
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => {
-                                const tracking = prompt("Ingresa el número de seguimiento:");
-                                if (tracking) {
-                                  handleUpdateStatus(order.id, 'shipped', tracking);
-                                }
-                              }}
-                              disabled={updatingStatus === order.id}
-                              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50"
-                              title="Marcar como enviado"
-                            >
-                              {updatingStatus === order.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Truck className="w-4 h-4" />
-                              )}
-                            </motion.button>
-                          )}
-                          
-                          {order.status === 'shipped' && (
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => handleUpdateStatus(order.id, 'delivered')}
-                              disabled={updatingStatus === order.id}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
-                              title="Marcar como entregado"
-                            >
-                              {updatingStatus === order.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <CheckCircle className="w-4 h-4" />
-                              )}
-                            </motion.button>
-                          )}
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => openStatusModal(order)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Cambiar estado"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </motion.button>
                         </div>
                       </td>
                     </motion.tr>
@@ -479,6 +460,142 @@ const OrdersPage = () => {
             </table>
           </div>
         </div>
+
+        {/* Status Update Modal */}
+        {showStatusModal && selectedOrder && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-glow-500 to-glow-600 px-6 py-4">
+                <h3 className="text-xl font-bold text-white">
+                  Actualizar Estado del Pedido
+                </h3>
+                <p className="text-glow-100 text-sm mt-1">
+                  Pedido #{selectedOrder.id.slice(0, 8).toUpperCase()}
+                </p>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-4">
+                {/* Order Info */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-600">Cliente:</span>
+                    <span className="font-medium text-gray-900">
+                      {selectedOrder.user?.full_name || "Sin nombre"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-600">Total:</span>
+                    <span className="font-medium text-gray-900">
+                      €{selectedOrder.total.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Estado actual:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusDisplay(selectedOrder.status).color}`}>
+                      {getStatusDisplay(selectedOrder.status).label}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Status Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nuevo Estado
+                  </label>
+                  <select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-glow-500 focus:border-transparent"
+                  >
+                    <option value="pending">🕐 Pendiente</option>
+                    <option value="processing">📦 Procesando</option>
+                    <option value="shipped">🚚 Enviado</option>
+                    <option value="delivered">✅ Entregado</option>
+                    <option value="cancelled">❌ Cancelado</option>
+                  </select>
+                </div>
+
+                {/* Tracking Number (only for shipped status) */}
+                {newStatus === 'shipped' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Número de Seguimiento
+                    </label>
+                    <input
+                      type="text"
+                      value={trackingNumber}
+                      onChange={(e) => setTrackingNumber(e.target.value)}
+                      placeholder="Ej: ES123456789"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-glow-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Opcional: Número de seguimiento del envío
+                    </p>
+                  </div>
+                )}
+
+                {/* Status Change Info */}
+                {newStatus !== selectedOrder.status && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">Cambio de estado:</p>
+                        <p>
+                          <span className="font-semibold">{getStatusDisplay(selectedOrder.status).label}</span>
+                          {' → '}
+                          <span className="font-semibold">{getStatusDisplay(newStatus).label}</span>
+                        </p>
+                        {newStatus === 'delivered' && (
+                          <p className="mt-1 text-xs">El cliente recibirá una notificación de entrega.</p>
+                        )}
+                        {newStatus === 'cancelled' && (
+                          <p className="mt-1 text-xs">Esta acción no se puede deshacer fácilmente.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3">
+                <button
+                  onClick={closeStatusModal}
+                  disabled={updatingStatus === selectedOrder.id}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleUpdateStatus}
+                  disabled={updatingStatus === selectedOrder.id || !newStatus}
+                  className="px-6 py-2 bg-glow-600 text-white rounded-lg hover:bg-glow-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {updatingStatus === selectedOrder.id ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Actualizando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      Actualizar Estado
+                    </>
+                  )}
+                </motion.button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );

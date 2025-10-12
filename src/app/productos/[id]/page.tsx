@@ -19,6 +19,7 @@ import { SuccessMessage } from "./components/SuccessMessage";
 import { ProductImage } from "./components/ProductImage";
 import { ProductInfoHeader } from "./components/ProductInfoHeader";
 import { ProductActions } from "./components/ProductActions";
+import { ProductDetails } from "./components/ProductDetails";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -138,6 +139,9 @@ export default function ProductDetailPage() {
               />
             </div>
           </div>
+
+          {/* Product Details: Beneficios, Modo de Uso, Ingredientes */}
+          <ProductDetails product={product} />
 
           {/* Reviews section */}
           <div className="mt-16">

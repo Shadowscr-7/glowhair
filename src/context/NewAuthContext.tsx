@@ -105,25 +105,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
 
-      // Usar la nueva API de signup
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          password,
-          fullName: userData?.first_name && userData?.last_name 
-            ? `${userData.first_name} ${userData.last_name}` 
-            : undefined,
-          phone: userData?.phone,
-          hairType: userData?.hair_type,
-        }),
+      console.log('📝 Registrando usuario...', email);
+
+      // Hacer signup DIRECTAMENTE con Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: userData?.first_name && userData?.last_name 
+              ? `${userData.first_name} ${userData.last_name}` 
+              : undefined,
+            first_name: userData?.first_name,
+            last_name: userData?.last_name,
+            phone: userData?.phone,
+          },
+        },
       });
 
-      const data = await response.json();
+      if (error) {
+        console.error('❌ Error en signup:', error.message);
+        return { success: false, error: error.message };
+      }
 
-      if (!response.ok) {
-        return { success: false, error: data.error || 'Error en el registro' };
+      if (!data.user) {
+        console.error('❌ No se obtuvo usuario después del registro');
+        return { success: false, error: 'Error al crear usuario' };
+      }
+
+      console.log('✅ Registro exitoso, usuario:', data.user.email);
+
+      // Si hay perfil adicional, actualizarlo
+      if (userData && data.user) {
+        await supabase
+          .from('profiles')
+          .update({
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            phone: userData.phone,
+          })
+          .eq('id', data.user.id);
       }
 
       // Refrescar el usuario después del registro
@@ -143,20 +164,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
 
-      // Usar la nueva API de signin
-      const response = await fetch('/api/auth/signin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      console.log('🔐 Iniciando sesión...', email);
+
+      // Hacer login DIRECTAMENTE con Supabase (no a través de API)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        return { success: false, error: data.error || 'Error al iniciar sesión' };
+      if (error) {
+        console.error('❌ Error en signin:', error.message);
+        return { success: false, error: error.message };
       }
 
-      // Refrescar el usuario después del login
+      if (!data.user) {
+        console.error('❌ No se obtuvo usuario después del login');
+        return { success: false, error: 'Error al obtener usuario' };
+      }
+
+      console.log('✅ Signin exitoso, usuario:', data.user.email);
+      console.log('✅ Sesión guardada en localStorage');
+
+      // El estado se actualizará automáticamente por el listener onAuthStateChange
+      // Pero vamos a forzar un refresh para asegurarnos
       await refreshUser();
 
       return { success: true };
@@ -217,10 +247,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
       
-      // Usar la nueva API de signout
-      await fetch('/api/auth/signout', { method: 'POST' });
+      console.log('🚪 Cerrando sesión...');
+      
+      // Hacer signout DIRECTAMENTE con Supabase
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('❌ Error al cerrar sesión:', error.message);
+      }
       
       setFavorites([]);
+      
+      console.log('✅ Sesión cerrada');
       
       // Actualizar el estado local
       setState({
@@ -308,16 +346,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Función para inicializar el estado de autenticación
     const initializeAuth = async () => {
       try {
+        console.log('🔄 Inicializando autenticación...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error("Error getting session:", error);
+          console.error("❌ Error getting session:", error);
           setState(prev => ({ ...prev, isLoading: false }));
           return;
         }
 
         if (session?.user) {
+          console.log('✅ Sesión encontrada:', session.user.email);
           const userObject = await createUserObject(session.user);
+          console.log('✅ Usuario creado:', userObject);
           setState({
             user: userObject,
             session,
@@ -327,6 +368,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             favorites: favorites,
           });
         } else {
+          console.log('ℹ️ No hay sesión activa');
           setState({
             user: null,
             session: null,

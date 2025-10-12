@@ -10,20 +10,25 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log('🔵 API GET /api/products/[id] - Start');
     const { id } = await params;
+    console.log('📦 Product ID:', id);
 
     const result = await productService.getProductById(id);
+    console.log('📊 Service result:', result);
 
     if (!result.success) {
+      console.error('❌ Service returned error:', result.error);
       return NextResponse.json(
         { error: result.error },
         { status: 404 }
       );
     }
 
+    console.log('✅ API GET /api/products/[id] - Success');
     return NextResponse.json(result.data, { status: 200 });
   } catch (error) {
-    console.error('Error in GET /api/products/[id]:', error);
+    console.error('❌ Error in GET /api/products/[id]:', error);
     return NextResponse.json(
       { error: 'Error al obtener producto' },
       { status: 500 }

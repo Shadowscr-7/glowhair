@@ -341,19 +341,22 @@ const EditProductPage = () => {
               {/* Current Price */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Precio Actual (€) *
+                  Precio Actual ($) *
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.price}
-                  onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 focus:border-transparent ${
-                    errors.price ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="0.00"
-                />
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-600 font-semibold">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.price}
+                    onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                    className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 focus:border-transparent ${
+                      errors.price ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="0.00"
+                  />
+                </div>
                 {errors.price && (
                   <p className="text-red-600 text-sm mt-1">{errors.price}</p>
                 )}
@@ -362,20 +365,23 @@ const EditProductPage = () => {
               {/* Original Price */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Precio Original (€)
+                  Precio Original ($)
                   <span className="text-sm text-gray-500 ml-1">(opcional, para mostrar descuento)</span>
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.originalPrice}
-                  onChange={(e) => setFormData(prev => ({ ...prev, originalPrice: parseFloat(e.target.value) || 0 }))}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 focus:border-transparent ${
-                    errors.originalPrice ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="0.00"
-                />
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-600 font-semibold">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.originalPrice}
+                    onChange={(e) => setFormData(prev => ({ ...prev, originalPrice: parseFloat(e.target.value) || 0 }))}
+                    className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 focus:border-transparent ${
+                      errors.originalPrice ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="0.00"
+                  />
+                </div>
                 {errors.originalPrice && (
                   <p className="text-red-600 text-sm mt-1">{errors.originalPrice}</p>
                 )}
