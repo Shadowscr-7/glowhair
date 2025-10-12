@@ -7,6 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/NewAuthContext";
+import { useFavorites } from "@/hooks/useFavorites";
 import logoKeila from "@/assets/logokeila.png";
 
 const Navbar = () => {
@@ -14,13 +15,11 @@ const Navbar = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { state: cartState, toggleCart } = useCart();
   const { state: authState, logout } = useAuth();
+  const { count: favoritesCount } = useFavorites();
 
   const navItems = [
     { name: "Inicio", href: "/" },
     { name: "Productos", href: "/productos" },
-    { name: "Cuidado", href: "/cuidado" },
-    { name: "Tratamientos", href: "/tratamientos" },
-    { name: "Blog", href: "/blog" },
     { name: "Contacto", href: "/contacto" },
   ];
 
@@ -203,6 +202,15 @@ const Navbar = () => {
                     className="p-2 text-gray-600 hover:text-glow-600 transition-colors duration-200 relative"
                   >
                     <Heart size={20} />
+                    {favoritesCount > 0 && (
+                      <motion.span
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium"
+                      >
+                        {favoritesCount}
+                      </motion.span>
+                    )}
                   </motion.button>
                 </Link>
               </div>
@@ -340,10 +348,15 @@ const Navbar = () => {
                       <motion.button
                         whileHover={{ backgroundColor: "#f8fafc" }}
                         onClick={() => setIsMenuOpen(false)}
-                        className="w-full flex items-center space-x-3 px-3 py-4 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                        className="w-full flex items-center space-x-3 px-3 py-4 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors relative"
                       >
                         <Heart size={20} />
                         <span>Mis Favoritos</span>
+                        {favoritesCount > 0 && (
+                          <span className="ml-auto bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-medium">
+                            {favoritesCount}
+                          </span>
+                        )}
                       </motion.button>
                     </Link>
 

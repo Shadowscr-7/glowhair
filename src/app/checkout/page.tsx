@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { 
   ArrowLeft, 
   CreditCard, 
@@ -18,7 +19,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import { useCart } from "@/context/CartContext";
-import { cartAPI, ordersAPI } from "@/lib/api";
+import { ordersAPI } from "@/lib/api";
 import { useAuth } from "@/context/NewAuthContext";
 
 interface FormData {
@@ -69,10 +70,10 @@ export default function CheckoutPage() {
     email: "",
     phone: "",
     address: "",
-    city: "",
+    city: "Montevideo",
     state: "",
     zipCode: "",
-    country: "Argentina",
+    country: "Uruguay",
     paymentMethod: "card",
     cardNumber: "",
     expiryDate: "",
@@ -89,12 +90,26 @@ export default function CheckoutPage() {
       setLoading(true);
       setError(null);
       
-      const totalsData = await cartAPI.getTotal();
+      // Calcular totales desde el contexto local en lugar de la API
+      const subtotal = state.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      // Calcular impuestos (16%)
+      const taxRate = 0.16;
+      const tax = subtotal * taxRate;
+      
+      // Calcular envío (gratis si subtotal > $50)
+      const freeShippingThreshold = 50;
+      const shippingCost = 5.99;
+      const shipping = subtotal >= freeShippingThreshold ? 0 : shippingCost;
+      
+      // Total
+      const total = subtotal + tax + shipping;
+      
       setTotals({
-        subtotal: totalsData.subtotal,
-        shipping: totalsData.shipping,
-        tax: totalsData.tax,
-        total: totalsData.total
+        subtotal: parseFloat(subtotal.toFixed(2)),
+        shipping: parseFloat(shipping.toFixed(2)),
+        tax: parseFloat(tax.toFixed(2)),
+        total: parseFloat(total.toFixed(2))
       });
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Error al cargar totales';
@@ -102,7 +117,7 @@ export default function CheckoutPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [state.items]);
 
   useEffect(() => {
     if (state.items.length > 0) {
@@ -184,15 +199,101 @@ export default function CheckoutPage() {
         notes: `Cliente: ${formData.firstName} ${formData.lastName} | Email: ${formData.email} | Tel: ${formData.phone}`
       };
 
+      console.log('💳 Procesando pago...', {
+        method: formData.paymentMethod,
+        total: total
+      });
+
       // Create order via API
       const order = await ordersAPI.create(orderData);
       setOrderId(order.id);
       
       if (formData.paymentMethod === "mercadopago") {
-        // Simulate MercadoPago redirection
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        // In production, redirect to real MercadoPago URL with order ID
-        // window.location.href = `https://www.mercadopago.com.ar/checkout/${order.id}`;
+        // ============================================
+        // MERCADO PAGO INTEGRATION
+        // ============================================
+        console.log('🟢 Procesando con Mercado Pago...');
+        
+        // TODO: Implementar integración real con Mercado Pago
+        // 1. Crear preferencia de pago en el backend
+        // 2. Obtener URL de checkout de Mercado Pago
+        // 3. Redirigir al usuario
+        
+        // Por ahora, simulación:
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // En producción, esto sería:
+        // const preference = await fetch('/api/mercadopago/create-preference', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({
+        //     orderId: order.id,
+        //     items: state.items.map(item => ({
+        //       title: item.name,
+        //       quantity: item.quantity,
+        //       unit_price: item.price,
+        //       currency_id: 'UYU' // Peso uruguayo
+        //     })),
+        //     payer: {
+        //       name: formData.firstName,
+        //       surname: formData.lastName,
+        //       email: formData.email,
+        //       phone: { number: formData.phone }
+        //     },
+        //     back_urls: {
+        //       success: `${window.location.origin}/orders/${order.id}?status=success`,
+        //       failure: `${window.location.origin}/checkout?status=failure`,
+        //       pending: `${window.location.origin}/orders/${order.id}?status=pending`
+        //     },
+        //     auto_return: 'approved'
+        //   })
+        // });
+        // const { init_point } = await preference.json();
+        // window.location.href = init_point; // Redirigir a Mercado Pago
+        
+        console.log('✅ Pedido creado, redirigiendo a Mercado Pago...');
+        alert('🟢 En producción, serías redirigido a Mercado Pago para completar el pago.\n\nPor ahora, simulamos el pago exitoso.');
+        
+      } else {
+        // ============================================
+        // CREDIT CARD PAYMENT (SIMULATION)
+        // ============================================
+        console.log('💳 Procesando pago con tarjeta...');
+        
+        // Validar datos de la tarjeta
+        const cardNumber = formData.cardNumber.replace(/\s/g, '');
+        if (cardNumber.length < 15) {
+          throw new Error('Número de tarjeta inválido');
+        }
+        
+        // Simular procesamiento de pago
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        
+        // TODO: En producción, integrar con procesador de pagos:
+        // - Stripe
+        // - dLocal (para Uruguay)
+        // - Mercado Pago Card Token API
+        
+        // Ejemplo con Stripe:
+        // const paymentIntent = await fetch('/api/stripe/create-payment', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({
+        //     amount: Math.round(total * 100), // cents
+        //     currency: 'uyu',
+        //     orderId: order.id,
+        //     paymentMethod: {
+        //       card: {
+        //         number: cardNumber,
+        //         exp_month: formData.expiryDate.split('/')[0],
+        //         exp_year: '20' + formData.expiryDate.split('/')[1],
+        //         cvc: formData.cvv
+        //       }
+        //     }
+        //   })
+        // });
+        
+        console.log('✅ Pago con tarjeta procesado exitosamente');
       }
       
       // Show success
@@ -202,13 +303,15 @@ export default function CheckoutPage() {
       // Clear cart and redirect after success
       setTimeout(() => {
         clearCart();
-        router.push('/');
-      }, 4000);
+        router.push(`/orders/${order.id}`);
+      }, 3000);
       
     } catch (error) {
       setIsProcessing(false);
-      console.error("Payment error:", error);
-      alert('Error al procesar el pago. Por favor intenta de nuevo.');
+      console.error("❌ Error al procesar el pago:", error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      alert(`❌ Error al procesar el pago:\n${errorMessage}\n\nPor favor, verifica tus datos e intenta de nuevo.`);
     }
   };
 
@@ -538,11 +641,9 @@ export default function CheckoutPage() {
                               <input
                                 type="text"
                                 value={formData.city}
-                                onChange={(e) => updateFormData("city", e.target.value)}
-                                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 ${
-                                  formErrors.city ? "border-red-500" : "border-gray-300"
-                                }`}
-                                placeholder="Ciudad"
+                                readOnly
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                                placeholder="Montevideo"
                               />
                               {formErrors.city && (
                                 <p className="text-red-500 text-sm mt-1">{formErrors.city}</p>
@@ -551,7 +652,7 @@ export default function CheckoutPage() {
 
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Provincia *
+                                Barrio *
                               </label>
                               <select
                                 value={formData.state}
@@ -560,31 +661,55 @@ export default function CheckoutPage() {
                                   formErrors.state ? "border-red-500" : "border-gray-300"
                                 }`}
                               >
-                                <option value="">Selecciona provincia</option>
-                                <option value="Buenos Aires">Buenos Aires</option>
-                                <option value="CABA">Ciudad Autónoma de Buenos Aires</option>
-                                <option value="Córdoba">Córdoba</option>
-                                <option value="Santa Fe">Santa Fe</option>
-                                <option value="Mendoza">Mendoza</option>
-                                <option value="Tucumán">Tucumán</option>
-                                <option value="Entre Ríos">Entre Ríos</option>
-                                <option value="Salta">Salta</option>
-                                <option value="Misiones">Misiones</option>
-                                <option value="Chaco">Chaco</option>
-                                <option value="Corrientes">Corrientes</option>
-                                <option value="Santiago del Estero">Santiago del Estero</option>
-                                <option value="San Juan">San Juan</option>
-                                <option value="Jujuy">Jujuy</option>
-                                <option value="Río Negro">Río Negro</option>
-                                <option value="Formosa">Formosa</option>
-                                <option value="Neuquén">Neuquén</option>
-                                <option value="Chubut">Chubut</option>
-                                <option value="San Luis">San Luis</option>
-                                <option value="Catamarca">Catamarca</option>
-                                <option value="La Rioja">La Rioja</option>
-                                <option value="La Pampa">La Pampa</option>
-                                <option value="Santa Cruz">Santa Cruz</option>
-                                <option value="Tierra del Fuego">Tierra del Fuego</option>
+                                <option value="">Selecciona barrio</option>
+                                <option value="Aguada">Aguada</option>
+                                <option value="Atahualpa">Atahualpa</option>
+                                <option value="Barrio Sur">Barrio Sur</option>
+                                <option value="Belvedere">Belvedere</option>
+                                <option value="Brazo Oriental">Brazo Oriental</option>
+                                <option value="Buceo">Buceo</option>
+                                <option value="Carrasco">Carrasco</option>
+                                <option value="Carrasco Norte">Carrasco Norte</option>
+                                <option value="Centro">Centro</option>
+                                <option value="Cerrito">Cerrito</option>
+                                <option value="Cerro">Cerro</option>
+                                <option value="Ciudad Vieja">Ciudad Vieja</option>
+                                <option value="Colón">Colón</option>
+                                <option value="Cordón">Cordón</option>
+                                <option value="Flor de Maroñas">Flor de Maroñas</option>
+                                <option value="Goes">Goes</option>
+                                <option value="Ituzaingó">Ituzaingó</option>
+                                <option value="Jacinto Vera">Jacinto Vera</option>
+                                <option value="La Blanqueada">La Blanqueada</option>
+                                <option value="La Comercial">La Comercial</option>
+                                <option value="La Figurita">La Figurita</option>
+                                <option value="La Teja">La Teja</option>
+                                <option value="Larrañaga">Larrañaga</option>
+                                <option value="Las Acacias">Las Acacias</option>
+                                <option value="Las Canteras">Las Canteras</option>
+                                <option value="Lezica">Lezica</option>
+                                <option value="Malvín">Malvín</option>
+                                <option value="Malvín Norte">Malvín Norte</option>
+                                <option value="Manga">Manga</option>
+                                <option value="Maroñas">Maroñas</option>
+                                <option value="Mercado Modelo">Mercado Modelo</option>
+                                <option value="Palermo">Palermo</option>
+                                <option value="Parque Batlle">Parque Batlle</option>
+                                <option value="Parque Rodó">Parque Rodó</option>
+                                <option value="Paso de la Arena">Paso de la Arena</option>
+                                <option value="Paso de las Duranas">Paso de las Duranas</option>
+                                <option value="Peñarol">Peñarol</option>
+                                <option value="Pocitos">Pocitos</option>
+                                <option value="Pocitos Nuevo">Pocitos Nuevo</option>
+                                <option value="Prado">Prado</option>
+                                <option value="Punta Carretas">Punta Carretas</option>
+                                <option value="Punta Gorda">Punta Gorda</option>
+                                <option value="Reducto">Reducto</option>
+                                <option value="Tres Cruces">Tres Cruces</option>
+                                <option value="Unión">Unión</option>
+                                <option value="Villa Dolores">Villa Dolores</option>
+                                <option value="Villa Española">Villa Española</option>
+                                <option value="Villa Muñoz">Villa Muñoz</option>
                               </select>
                               {formErrors.state && (
                                 <p className="text-red-500 text-sm mt-1">{formErrors.state}</p>
@@ -620,11 +745,11 @@ export default function CheckoutPage() {
                                 onChange={(e) => updateFormData("country", e.target.value)}
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500"
                               >
-                                <option value="Argentina">Argentina</option>
                                 <option value="Uruguay">Uruguay</option>
+                                <option value="Argentina">Argentina</option>
+                                <option value="Brasil">Brasil</option>
                                 <option value="Paraguay">Paraguay</option>
                                 <option value="Chile">Chile</option>
-                                <option value="Brasil">Brasil</option>
                               </select>
                             </div>
                           </div>
@@ -851,18 +976,28 @@ export default function CheckoutPage() {
                             <div className="space-y-4">
                               {state.items.map((item) => (
                                 <div key={item.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                                  <div className="w-16 h-16 bg-gradient-to-br from-glow-50 to-glow-100 rounded-lg flex items-center justify-center">
-                                    <div className="w-10 h-10">
-                                      {item.image}
-                                    </div>
+                                  <div className="w-20 h-20 bg-gradient-to-br from-glow-50 to-glow-100 rounded-lg flex items-center justify-center overflow-hidden relative flex-shrink-0">
+                                    {item.image && typeof item.image === 'string' && item.image.trim() !== "" ? (
+                                      <Image
+                                        src={item.image}
+                                        alt={item.name}
+                                        fill
+                                        className="object-contain p-2"
+                                        unoptimized
+                                      />
+                                    ) : (
+                                      <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
+                                        <span className="text-gray-400 text-lg">📦</span>
+                                      </div>
+                                    )}
                                   </div>
-                                  <div className="flex-1">
-                                    <h4 className="font-medium text-gray-900">{item.name}</h4>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-medium text-gray-900 truncate">{item.name}</h4>
                                     <p className="text-sm text-gray-600">{item.brand} • {item.size}</p>
                                     <p className="text-sm text-gray-600">Cantidad: {item.quantity}</p>
                                   </div>
                                   <div className="text-right">
-                                    <p className="font-semibold text-gray-900">
+                                    <p className="font-semibold text-glow-600">
                                       ${(item.price * item.quantity).toFixed(2)}
                                     </p>
                                   </div>
@@ -987,12 +1122,22 @@ export default function CheckoutPage() {
                 <div className="space-y-3 mb-6">
                   {state.items.map((item) => (
                     <div key={item.id} className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-glow-50 to-glow-100 rounded-lg flex items-center justify-center">
-                        <div className="w-6 h-6">
-                          {item.image}
-                        </div>
+                      <div className="w-16 h-16 bg-gradient-to-br from-glow-50 to-glow-100 rounded-lg flex items-center justify-center overflow-hidden relative flex-shrink-0">
+                        {item.image && typeof item.image === 'string' && item.image.trim() !== "" ? (
+                          <Image
+                            src={item.image}
+                            alt={item.name}
+                            fill
+                            className="object-contain p-2"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                            <span className="text-gray-400 text-xs">📦</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 line-clamp-1">
                           {item.name}
                         </p>
@@ -1000,7 +1145,7 @@ export default function CheckoutPage() {
                           Qty: {item.quantity} • ${item.price.toFixed(2)}
                         </p>
                       </div>
-                      <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-glow-600">
                         ${(item.price * item.quantity).toFixed(2)}
                       </p>
                     </div>
@@ -1010,29 +1155,29 @@ export default function CheckoutPage() {
                 <div className="space-y-3 border-t border-gray-200 pt-4">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">${subtotal.toFixed(2)}</span>
+                    <span className="font-semibold text-gray-900">${subtotal.toFixed(2)}</span>
                   </div>
                   
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Envío</span>
-                    <span className="font-medium">
+                    <span className="font-semibold">
                       {shipping === 0 ? (
-                        <span className="text-green-600">Gratis</span>
+                        <span className="text-green-600 font-semibold">Gratis</span>
                       ) : (
-                        `$${shipping.toFixed(2)}`
+                        <span className="text-gray-900">${shipping.toFixed(2)}</span>
                       )}
                     </span>
                   </div>
                   
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Impuestos</span>
-                    <span className="font-medium">${tax.toFixed(2)}</span>
+                    <span className="font-semibold text-gray-900">${tax.toFixed(2)}</span>
                   </div>
                   
                   <div className="border-t border-gray-200 pt-3">
                     <div className="flex justify-between">
                       <span className="text-lg font-semibold text-gray-900">Total</span>
-                      <span className="text-lg font-bold text-glow-600">
+                      <span className="text-xl font-bold text-glow-600">
                         ${total.toFixed(2)}
                       </span>
                     </div>

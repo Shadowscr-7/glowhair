@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/NewAuthContext";
+import { useFavorites } from "@/hooks/useFavorites";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 
@@ -36,7 +37,8 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const router = useRouter();
   const { addItem, openCart } = useCart();
-  const { state: authState, toggleFavorite, isFavorite } = useAuth();
+  const { state: authState } = useAuth();
+  const { isFavorite, toggle: toggleFavorite, loading: favoriteLoading } = useFavorites();
 
   const discountPercentage = product.originalPrice 
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
@@ -44,10 +46,39 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
 
   const isProductFavorite = authState.isAuthenticated && isFavorite(product.id);
 
-  const handleToggleFavorite = (e: React.MouseEvent) => {
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (authState.isAuthenticated) {
-      toggleFavorite(product.id);
+    if (!authState.isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+
+    // Verificar si el ID del producto es un UUID válido (productos de la API)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(product.id)) {
+      console.warn('⚠️ Producto mock/local no se puede agregar a favoritos:', product.id);
+      alert('Este producto no está disponible para agregar a favoritos. Solo los productos de la tienda pueden ser favoritos.');
+      return;
+    }
+
+    console.log('❤️ Toggle favorito para producto:', {
+      id: product.id,
+      name: product.name,
+      isFavorite: isProductFavorite
+    });
+
+    try {
+      await toggleFavorite(product.id);
+      console.log('✅ Favorito actualizado correctamente');
+    } catch (error) {
+      console.error('❌ Error al actualizar favorito:', error);
+      
+      // Mostrar mensaje de error más específico
+      if (error instanceof Error) {
+        alert(`Error: ${error.message}`);
+      } else {
+        alert('Error al actualizar favoritos. Por favor, intenta de nuevo.');
+      }
     }
   };
 
@@ -139,20 +170,29 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={handleToggleFavorite}
+        disabled={favoriteLoading}
         className={cn(
-          "absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all duration-200",
+          "absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 disabled:opacity-50",
           isProductFavorite 
             ? "bg-red-500 text-white" 
             : "bg-white/90 backdrop-blur-sm text-gray-600 hover:bg-white"
         )}
       >
-        <Heart 
-          size={16} 
-          className={cn(
-            "transition-colors duration-200",
-            isProductFavorite ? "fill-current" : ""
-          )}
-        />
+        {favoriteLoading ? (
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-3 h-3 border border-current border-t-transparent rounded-full"
+          />
+        ) : (
+          <Heart 
+            size={16} 
+            className={cn(
+              "transition-colors duration-200",
+              isProductFavorite ? "fill-current" : ""
+            )}
+          />
+        )}
       </motion.button>
 
       {/* Product Image */}
