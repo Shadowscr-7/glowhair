@@ -490,7 +490,7 @@ export const orderService = {
   },
 
   // Cancelar pedido
-  async cancelOrder(orderId: string, _userId: string, _reason?: string): Promise<ApiResponse<Order>> {
+  async cancelOrder(orderId: string): Promise<ApiResponse<Order>> {
     try {
       return await this.updateOrderStatus(orderId, 'cancelled');
     } catch (error) {
@@ -499,5 +499,5 @@ export const orderService = {
         error: error instanceof Error ? error.message : 'Error al cancelar pedido'
       };
     }
-  }
+  },
 };

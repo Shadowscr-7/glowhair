@@ -132,30 +132,6 @@ const addFavorite = async (productId: string) => {
   }
 };
 
-// Remove favorite
-const removeFavorite = async (productId: string) => {
-  try {
-    const response = await fetch(`/api/favorites/${productId}`, {
-      method: 'DELETE',
-      headers: {
-        'x-user-id': '00000000-0000-0000-0000-000000000001', // UUID temporal para desarrollo
-      },
-    });
-
-    if (!response.ok) throw new Error('Error al eliminar favorito');
-
-    // Update local state
-    favoritesState.favorites.delete(productId);
-    favoritesState.count = favoritesState.favorites.size;
-    notifyListeners();
-
-    return true;
-  } catch (error) {
-    console.error('Error removing favorite:', error);
-    throw error;
-  }
-};
-
 // Toggle favorite - ahora solo llama a addFavorite que hace toggle automático
 const toggleFavorite = async (productId: string) => {
   // El endpoint POST /api/favorites ahora hace toggle automático:

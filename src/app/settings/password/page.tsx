@@ -139,7 +139,7 @@ export default function ChangePasswordPage() {
       setTimeout(() => {
         router.push('/settings');
       }, 2000);
-    } catch (err) {
+    } catch {
       setError('Error al cambiar la contraseña. Verifica que la contraseña actual sea correcta.');
     } finally {
       setIsChanging(false);

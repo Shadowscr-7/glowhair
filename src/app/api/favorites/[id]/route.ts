@@ -7,12 +7,14 @@ import { supabase } from '@/lib/supabase';
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Await params in Next.js 15
+    const { id: productId } = await params;
+    
     // UUID temporal para desarrollo (reemplazar con auth.uid() en producción)
     const userId = request.headers.get('x-user-id') || '00000000-0000-0000-0000-000000000001';
-    const productId = params.id;
 
     // Eliminar el favorito
     const { error } = await supabase

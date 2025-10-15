@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Heart, ShoppingCart, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import Navbar from "@/components/layout/Navbar";
 import { favoritesAPI, cartAPI, type Favorite } from "@/lib/api";
 import { useAuth } from "@/context/NewAuthContext";
@@ -44,7 +45,7 @@ const FavoritesPage = () => {
     try {
       setRemovingId(productId);
       await favoritesAPI.remove(productId);
-      setFavorites(prevFavs => prevFavs.filter(fav => fav.product.id !== productId));
+      setFavorites(prevFavs => prevFavs.filter(fav => fav.product && fav.product.id !== productId));
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error al eliminar favorito');
     } finally {
@@ -230,10 +231,12 @@ const FavoritesPage = () => {
                 >
                   <div className="relative aspect-square bg-gradient-to-br from-glow-50 to-glow-100">
                     {product.images && product.images.length > 0 ? (
-                      <img 
+                      <Image 
                         src={product.images[0]} 
                         alt={product.name}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-glow-400">

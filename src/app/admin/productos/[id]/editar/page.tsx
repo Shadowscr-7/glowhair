@@ -7,13 +7,26 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import ProductForm from "@/components/admin/ProductForm";
 import { Loader2 } from "lucide-react";
 
+interface ProductFormData {
+  name: string;
+  description: string;
+  price: number;
+  originalPrice: number;
+  category: string;
+  categoryId: string;
+  benefits: string[];
+  usage: string;
+  ingredients: string;
+  inStock: boolean;
+}
+
 const EditProductPage = () => {
   const { state: authState } = useAuth();
   const router = useRouter();
   const params = useParams();
   const productId = params.id as string;
 
-  const [initialData, setInitialData] = useState<any>(null);
+  const [initialData, setInitialData] = useState<ProductFormData | null>(null);
   const [initialImage, setInitialImage] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -48,7 +61,7 @@ const EditProductPage = () => {
         } else {
           router.push("/admin/productos");
         }
-      } catch (error) {
+      } catch {
         router.push("/admin/productos");
       } finally {
         setIsLoading(false);

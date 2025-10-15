@@ -19,14 +19,6 @@ export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  useEffect(() => {
-    if (!state.isAuthenticated || !state.user?.id) {
-      router.push("/login");
-      return;
-    }
-    fetchOrders();
-  }, [state, router]);
-
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -63,6 +55,15 @@ export default function OrdersPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!state.isAuthenticated || !state.user?.id) {
+      router.push("/login");
+      return;
+    }
+    fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, router]);
 
   useEffect(() => {
     let filtered = [...orders];
