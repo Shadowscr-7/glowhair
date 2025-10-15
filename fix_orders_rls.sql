@@ -22,6 +22,13 @@ DROP POLICY IF EXISTS "order_items_insert_policy" ON glowhair_order_items;
 DROP POLICY IF EXISTS "order_items_update_policy" ON glowhair_order_items;
 DROP POLICY IF EXISTS "order_items_delete_policy" ON glowhair_order_items;
 
+DROP POLICY IF EXISTS "Enable read access for all users" ON glowhair_order_status_history;
+DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON glowhair_order_status_history;
+DROP POLICY IF EXISTS "order_status_history_select_policy" ON glowhair_order_status_history;
+DROP POLICY IF EXISTS "order_status_history_insert_policy" ON glowhair_order_status_history;
+DROP POLICY IF EXISTS "order_status_history_update_policy" ON glowhair_order_status_history;
+DROP POLICY IF EXISTS "order_status_history_delete_policy" ON glowhair_order_status_history;
+
 -- 2️⃣ CREAR POLÍTICAS PERMISIVAS (DESARROLLO)
 -- ============================================
 -- Estas políticas permiten acceso total a todas las órdenes
@@ -71,10 +78,33 @@ ON glowhair_order_items
 FOR DELETE
 USING (true);  -- Cualquiera puede eliminar items
 
+-- Políticas para glowhair_order_status_history
+CREATE POLICY "order_status_history_select_policy"
+ON glowhair_order_status_history
+FOR SELECT
+USING (true);  -- Todos pueden ver el historial
+
+CREATE POLICY "order_status_history_insert_policy"
+ON glowhair_order_status_history
+FOR INSERT
+WITH CHECK (true);  -- Cualquiera puede crear historial
+
+CREATE POLICY "order_status_history_update_policy"
+ON glowhair_order_status_history
+FOR UPDATE
+USING (true)
+WITH CHECK (true);  -- Cualquiera puede actualizar historial
+
+CREATE POLICY "order_status_history_delete_policy"
+ON glowhair_order_status_history
+FOR DELETE
+USING (true);  -- Cualquiera puede eliminar historial
+
 -- 3️⃣ VERIFICAR QUE RLS ESTÉ HABILITADO
 -- ============================================
 ALTER TABLE glowhair_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE glowhair_order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE glowhair_order_status_history ENABLE ROW LEVEL SECURITY;
 
 -- 4️⃣ VERIFICAR POLÍTICAS APLICADAS
 -- ============================================
@@ -86,7 +116,7 @@ SELECT
     qual,
     with_check
 FROM pg_policies
-WHERE tablename IN ('glowhair_orders', 'glowhair_order_items')
+WHERE tablename IN ('glowhair_orders', 'glowhair_order_items', 'glowhair_order_status_history')
 ORDER BY tablename, policyname;
 
 -- 5️⃣ VERIFICAR CONTENIDO DE LAS TABLAS

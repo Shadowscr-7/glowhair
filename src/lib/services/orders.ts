@@ -439,6 +439,8 @@ export const orderService = {
   // Actualizar estado del pedido
   async updateOrderStatus(orderId: string, status: string, paymentStatus?: string): Promise<ApiResponse<Order>> {
     try {
+      console.log('🔵 updateOrderStatus - Inicio', { orderId, status, paymentStatus });
+      
       const updateData: Record<string, unknown> = { 
         status,
         updated_at: new Date().toISOString(),
@@ -448,6 +450,8 @@ export const orderService = {
         updateData.payment_status = paymentStatus;
       }
 
+      console.log('📝 Datos a actualizar:', updateData);
+
       // Actualizar el pedido
       const { data: order, error: orderError } = await supabase
         .from('glowhair_orders')
@@ -456,10 +460,28 @@ export const orderService = {
         .select('*')
         .single();
 
-      if (orderError) throw orderError;
+      console.log('📊 Resultado de Supabase:', { 
+        hasData: !!order, 
+        hasError: !!orderError,
+        errorMessage: orderError?.message,
+        errorDetails: orderError
+      });
+
+      if (orderError) {
+        console.error('❌ Error de Supabase:', orderError);
+        throw orderError;
+      }
+
+      if (!order) {
+        console.error('❌ No se retornó ninguna orden');
+        throw new Error('No se encontró la orden o no se pudo actualizar');
+      }
+
+      console.log('✅ Orden actualizada exitosamente:', order.id);
 
       return { success: true, data: order };
     } catch (error) {
+      console.error('❌ Exception en updateOrderStatus:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Error al actualizar pedido'
