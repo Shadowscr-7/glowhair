@@ -28,6 +28,9 @@ interface FormData {
   email: string;
   phone: string;
   
+  // Delivery Method
+  deliveryMethod: "delivery" | "pickup";
+  
   // Shipping Address
   address: string;
   city: string;
@@ -36,7 +39,7 @@ interface FormData {
   country: string;
   
   // Payment Info
-  paymentMethod: "card" | "mercadopago";
+  paymentMethod: "card" | "mercadopago" | "cash";
   cardNumber: string;
   expiryDate: string;
   cvv: string;
@@ -68,6 +71,7 @@ export default function CheckoutPage() {
     lastName: "",
     email: "",
     phone: "",
+    deliveryMethod: "delivery",
     address: "",
     city: "Montevideo",
     state: "",
@@ -89,24 +93,37 @@ export default function CheckoutPage() {
       setLoading(true);
       setError(null);
       
-      // Calcular totales desde el contexto local en lugar de la API
+      // Calcular totales desde el contexto local
       const subtotal = state.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       
       // Calcular impuestos (16%)
       const taxRate = 0.16;
       const tax = subtotal * taxRate;
       
-      // Calcular envío (gratis si subtotal > $50)
-      const freeShippingThreshold = 50;
-      const shippingCost = 5.99;
-      const shipping = subtotal >= freeShippingThreshold ? 0 : shippingCost;
+      // Calcular envío según método y ciudad
+      let shippingCost = 0;
+      
+      if (formData.deliveryMethod === "delivery") {
+        if (formData.city === "Montevideo") {
+          shippingCost = 160;
+        } else if (formData.city === "Canelones") {
+          shippingCost = 250;
+        } else if (formData.city === "Otro") {
+          // Otros departamentos: $250 pero se paga en destino
+          // Por ahora lo dejamos en 0 en el checkout
+          shippingCost = 0;
+        }
+      } else {
+        // Retiro en domicilio: sin costo
+        shippingCost = 0;
+      }
       
       // Total
-      const total = subtotal + tax + shipping;
+      const total = subtotal + tax + shippingCost;
       
       setTotals({
         subtotal: parseFloat(subtotal.toFixed(2)),
-        shipping: parseFloat(shipping.toFixed(2)),
+        shipping: parseFloat(shippingCost.toFixed(2)),
         tax: parseFloat(tax.toFixed(2)),
         total: parseFloat(total.toFixed(2))
       });
@@ -116,7 +133,7 @@ export default function CheckoutPage() {
     } finally {
       setLoading(false);
     }
-  }, [state.items]);
+  }, [state.items, formData.deliveryMethod, formData.city]);
 
   useEffect(() => {
     if (state.items.length > 0) {
@@ -124,7 +141,7 @@ export default function CheckoutPage() {
     } else {
       setLoading(false);
     }
-  }, [state.items.length, fetchTotals]);
+  }, [state.items.length, fetchTotals, formData.deliveryMethod, formData.city]);
 
   const subtotal = totals.subtotal;
   const shipping = totals.shipping;
@@ -157,10 +174,13 @@ export default function CheckoutPage() {
     }
     
     if (step === 2) {
-      if (!formData.address.trim()) errors.address = "Dirección requerida";
-      if (!formData.city.trim()) errors.city = "Ciudad requerida";
-      if (!formData.state.trim()) errors.state = "Provincia requerida";
-      if (!formData.zipCode.trim()) errors.zipCode = "Código postal requerido";
+      if (formData.deliveryMethod === "delivery") {
+        if (!formData.address.trim()) errors.address = "Dirección requerida";
+        if (!formData.city.trim()) errors.city = "Ciudad requerida";
+        if (!formData.state.trim()) errors.state = "Barrio/Localidad requerido";
+        if (!formData.zipCode.trim()) errors.zipCode = "Código postal requerido";
+      }
+      // Si es pickup, no se requieren campos de dirección
     }
     
     if (step === 3 && formData.paymentMethod === "card") {
@@ -207,8 +227,12 @@ export default function CheckoutPage() {
         tax: totals.tax,
         shipping: totals.shipping,
         status: 'pending',
-        payment_method: formData.paymentMethod === "card" ? "credit_card" : "mercadopago",
-        payment_status: 'pending',
+        payment_method: formData.paymentMethod === "card" 
+          ? "credit_card" 
+          : formData.paymentMethod === "mercadopago"
+          ? "mercadopago"
+          : "cash",
+        payment_status: formData.paymentMethod === "cash" ? "pending_cash" : "pending",
         shipping_address: {
           firstName: formData.firstName,
           lastName: formData.lastName,
@@ -219,6 +243,7 @@ export default function CheckoutPage() {
           state: formData.state,
           zipCode: formData.zipCode,
           country: formData.country,
+          deliveryMethod: formData.deliveryMethod,
         },
         items: state.items.map(item => {
           // Obtener la imagen del producto
@@ -260,6 +285,20 @@ export default function CheckoutPage() {
       setOrderId(order.id);
 
       console.log('✅ Orden creada exitosamente:', order.id);
+      
+      // Si es pago en efectivo, no procesar pago
+      if (formData.paymentMethod === "cash") {
+        setIsProcessing(false);
+        setShowSuccess(true);
+        
+        // Limpiar carrito y redirigir
+        setTimeout(() => {
+          clearCart();
+          router.push(`/orders/success?orderId=${order.id}&paymentMethod=cash`);
+        }, 2500);
+        
+        return;
+      }
       
       // Simular procesamiento (en el futuro aquí iría Mercado Pago)
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -398,7 +437,10 @@ export default function CheckoutPage() {
             )}
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <p className="text-sm text-gray-600">
-                Recibirás un email de confirmación en breve con los detalles del envío.
+                {formData.paymentMethod === "cash" 
+                  ? "Te contactaremos pronto para coordinar el retiro y el pago en efectivo."
+                  : "Recibirás un email de confirmación en breve con los detalles del envío."
+                }
               </p>
             </div>
             <p className="text-sm text-gray-500">
@@ -589,144 +631,259 @@ export default function CheckoutPage() {
                       {/* Step 2: Shipping Address */}
                       {currentStep === 2 && (
                         <div className="space-y-6">
+                          {/* Delivery Method Selection */}
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Dirección *
+                            <label className="block text-sm font-medium text-gray-700 mb-4">
+                              Método de Entrega *
                             </label>
-                            <input
-                              type="text"
-                              value={formData.address}
-                              onChange={(e) => updateFormData("address", e.target.value)}
-                              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 ${
-                                formErrors.address ? "border-red-500" : "border-gray-300"
-                              }`}
-                              placeholder="Calle y número"
-                            />
-                            {formErrors.address && (
-                              <p className="text-red-500 text-sm mt-1">{formErrors.address}</p>
-                            )}
-                          </div>
-
-                          <div className="grid md:grid-cols-2 gap-6">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Ciudad *
-                              </label>
-                              <input
-                                type="text"
-                                value={formData.city}
-                                readOnly
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
-                                placeholder="Montevideo"
-                              />
-                              {formErrors.city && (
-                                <p className="text-red-500 text-sm mt-1">{formErrors.city}</p>
-                              )}
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Barrio *
-                              </label>
-                              <select
-                                value={formData.state}
-                                onChange={(e) => updateFormData("state", e.target.value)}
-                                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 ${
-                                  formErrors.state ? "border-red-500" : "border-gray-300"
+                            <div className="grid md:grid-cols-2 gap-4">
+                              <motion.label
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className={`relative flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                  formData.deliveryMethod === "delivery"
+                                    ? "border-glow-500 bg-glow-50"
+                                    : "border-gray-200 hover:border-gray-300"
                                 }`}
                               >
-                                <option value="">Selecciona barrio</option>
-                                <option value="Aguada">Aguada</option>
-                                <option value="Atahualpa">Atahualpa</option>
-                                <option value="Barrio Sur">Barrio Sur</option>
-                                <option value="Belvedere">Belvedere</option>
-                                <option value="Brazo Oriental">Brazo Oriental</option>
-                                <option value="Buceo">Buceo</option>
-                                <option value="Carrasco">Carrasco</option>
-                                <option value="Carrasco Norte">Carrasco Norte</option>
-                                <option value="Centro">Centro</option>
-                                <option value="Cerrito">Cerrito</option>
-                                <option value="Cerro">Cerro</option>
-                                <option value="Ciudad Vieja">Ciudad Vieja</option>
-                                <option value="Colón">Colón</option>
-                                <option value="Cordón">Cordón</option>
-                                <option value="Flor de Maroñas">Flor de Maroñas</option>
-                                <option value="Goes">Goes</option>
-                                <option value="Ituzaingó">Ituzaingó</option>
-                                <option value="Jacinto Vera">Jacinto Vera</option>
-                                <option value="La Blanqueada">La Blanqueada</option>
-                                <option value="La Comercial">La Comercial</option>
-                                <option value="La Figurita">La Figurita</option>
-                                <option value="La Teja">La Teja</option>
-                                <option value="Larrañaga">Larrañaga</option>
-                                <option value="Las Acacias">Las Acacias</option>
-                                <option value="Las Canteras">Las Canteras</option>
-                                <option value="Lezica">Lezica</option>
-                                <option value="Malvín">Malvín</option>
-                                <option value="Malvín Norte">Malvín Norte</option>
-                                <option value="Manga">Manga</option>
-                                <option value="Maroñas">Maroñas</option>
-                                <option value="Mercado Modelo">Mercado Modelo</option>
-                                <option value="Palermo">Palermo</option>
-                                <option value="Parque Batlle">Parque Batlle</option>
-                                <option value="Parque Rodó">Parque Rodó</option>
-                                <option value="Paso de la Arena">Paso de la Arena</option>
-                                <option value="Paso de las Duranas">Paso de las Duranas</option>
-                                <option value="Peñarol">Peñarol</option>
-                                <option value="Pocitos">Pocitos</option>
-                                <option value="Pocitos Nuevo">Pocitos Nuevo</option>
-                                <option value="Prado">Prado</option>
-                                <option value="Punta Carretas">Punta Carretas</option>
-                                <option value="Punta Gorda">Punta Gorda</option>
-                                <option value="Reducto">Reducto</option>
-                                <option value="Tres Cruces">Tres Cruces</option>
-                                <option value="Unión">Unión</option>
-                                <option value="Villa Dolores">Villa Dolores</option>
-                                <option value="Villa Española">Villa Española</option>
-                                <option value="Villa Muñoz">Villa Muñoz</option>
-                              </select>
-                              {formErrors.state && (
-                                <p className="text-red-500 text-sm mt-1">{formErrors.state}</p>
-                              )}
-                            </div>
-                          </div>
+                                <input
+                                  type="radio"
+                                  name="deliveryMethod"
+                                  value="delivery"
+                                  checked={formData.deliveryMethod === "delivery"}
+                                  onChange={(e) => updateFormData("deliveryMethod", e.target.value as "delivery" | "pickup")}
+                                  className="sr-only"
+                                />
+                                <Truck className="h-6 w-6 text-glow-600 mr-3 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900">Envío a domicilio</p>
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    Montevideo: $160 • Canelones: $250
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    Otros departamentos: $250 (se paga en destino)
+                                  </p>
+                                </div>
+                                {formData.deliveryMethod === "delivery" && (
+                                  <Check className="absolute top-3 right-3 h-5 w-5 text-glow-600" />
+                                )}
+                              </motion.label>
 
-                          <div className="grid md:grid-cols-2 gap-6">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Código Postal *
-                              </label>
-                              <input
-                                type="text"
-                                value={formData.zipCode}
-                                onChange={(e) => updateFormData("zipCode", e.target.value)}
-                                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 ${
-                                  formErrors.zipCode ? "border-red-500" : "border-gray-300"
+                              <motion.label
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className={`relative flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                  formData.deliveryMethod === "pickup"
+                                    ? "border-glow-500 bg-glow-50"
+                                    : "border-gray-200 hover:border-gray-300"
                                 }`}
-                                placeholder="1234"
-                              />
-                              {formErrors.zipCode && (
-                                <p className="text-red-500 text-sm mt-1">{formErrors.zipCode}</p>
-                              )}
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                País
-                              </label>
-                              <select
-                                value={formData.country}
-                                onChange={(e) => updateFormData("country", e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500"
                               >
-                                <option value="Uruguay">Uruguay</option>
-                                <option value="Argentina">Argentina</option>
-                                <option value="Brasil">Brasil</option>
-                                <option value="Paraguay">Paraguay</option>
-                                <option value="Chile">Chile</option>
-                              </select>
+                                <input
+                                  type="radio"
+                                  name="deliveryMethod"
+                                  value="pickup"
+                                  checked={formData.deliveryMethod === "pickup"}
+                                  onChange={(e) => updateFormData("deliveryMethod", e.target.value as "delivery" | "pickup")}
+                                  className="sr-only"
+                                />
+                                <svg className="h-6 w-6 text-glow-600 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                </svg>
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900">Retiro en domicilio</p>
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    Sin costo • Coordinaremos contigo
+                                  </p>
+                                </div>
+                                {formData.deliveryMethod === "pickup" && (
+                                  <Check className="absolute top-3 right-3 h-5 w-5 text-glow-600" />
+                                )}
+                              </motion.label>
                             </div>
                           </div>
+
+                          {/* Shipping Address Fields - Only show if delivery method is "delivery" */}
+                          {formData.deliveryMethod === "delivery" && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.3 }}
+                              className="space-y-6"
+                            >
+                              {/* City Selection */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Ciudad / Departamento *
+                                </label>
+                                <select
+                                  value={formData.city}
+                                  onChange={(e) => {
+                                    updateFormData("city", e.target.value);
+                                    // Reset state when city changes
+                                    if (e.target.value !== "Montevideo") {
+                                      updateFormData("state", "");
+                                    }
+                                  }}
+                                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 ${
+                                    formErrors.city ? "border-red-500" : "border-gray-300"
+                                  }`}
+                                >
+                                  <option value="Montevideo">Montevideo</option>
+                                  <option value="Canelones">Canelones</option>
+                                  <option value="Otro">Otro departamento</option>
+                                </select>
+                                {formErrors.city && (
+                                  <p className="text-red-500 text-sm mt-1">{formErrors.city}</p>
+                                )}
+                                {formData.city === "Otro" && (
+                                  <p className="text-sm text-amber-600 mt-2 flex items-start gap-2">
+                                    <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                                    <span>El costo de envío es de $250 y se paga en destino (al recibir el pedido)</span>
+                                  </p>
+                                )}
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Dirección *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={formData.address}
+                                  onChange={(e) => updateFormData("address", e.target.value)}
+                                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 ${
+                                    formErrors.address ? "border-red-500" : "border-gray-300"
+                                  }`}
+                                  placeholder="Calle y número"
+                                />
+                                {formErrors.address && (
+                                  <p className="text-red-500 text-sm mt-1">{formErrors.address}</p>
+                                )}
+                              </div>
+
+                              <div className="grid md:grid-cols-2 gap-6">
+                                {/* Barrio/Localidad field */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    {formData.city === "Montevideo" ? "Barrio" : "Localidad"} *
+                                  </label>
+                                  {formData.city === "Montevideo" ? (
+                                    <select
+                                      value={formData.state}
+                                      onChange={(e) => updateFormData("state", e.target.value)}
+                                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 ${
+                                        formErrors.state ? "border-red-500" : "border-gray-300"
+                                      }`}
+                                    >
+                                      <option value="">Selecciona barrio</option>
+                                      <option value="Aguada">Aguada</option>
+                                      <option value="Atahualpa">Atahualpa</option>
+                                      <option value="Barrio Sur">Barrio Sur</option>
+                                      <option value="Belvedere">Belvedere</option>
+                                      <option value="Brazo Oriental">Brazo Oriental</option>
+                                      <option value="Buceo">Buceo</option>
+                                      <option value="Carrasco">Carrasco</option>
+                                      <option value="Carrasco Norte">Carrasco Norte</option>
+                                      <option value="Centro">Centro</option>
+                                      <option value="Cerrito">Cerrito</option>
+                                      <option value="Cerro">Cerro</option>
+                                      <option value="Ciudad Vieja">Ciudad Vieja</option>
+                                      <option value="Colón">Colón</option>
+                                      <option value="Cordón">Cordón</option>
+                                      <option value="Flor de Maroñas">Flor de Maroñas</option>
+                                      <option value="Goes">Goes</option>
+                                      <option value="Ituzaingó">Ituzaingó</option>
+                                      <option value="Jacinto Vera">Jacinto Vera</option>
+                                      <option value="La Blanqueada">La Blanqueada</option>
+                                      <option value="La Comercial">La Comercial</option>
+                                      <option value="La Figurita">La Figurita</option>
+                                      <option value="La Teja">La Teja</option>
+                                      <option value="Larrañaga">Larrañaga</option>
+                                      <option value="Las Acacias">Las Acacias</option>
+                                      <option value="Las Canteras">Las Canteras</option>
+                                      <option value="Lezica">Lezica</option>
+                                      <option value="Malvín">Malvín</option>
+                                      <option value="Malvín Norte">Malvín Norte</option>
+                                      <option value="Manga">Manga</option>
+                                      <option value="Maroñas">Maroñas</option>
+                                      <option value="Mercado Modelo">Mercado Modelo</option>
+                                      <option value="Palermo">Palermo</option>
+                                      <option value="Parque Batlle">Parque Batlle</option>
+                                      <option value="Parque Rodó">Parque Rodó</option>
+                                      <option value="Paso de la Arena">Paso de la Arena</option>
+                                      <option value="Paso de las Duranas">Paso de las Duranas</option>
+                                      <option value="Peñarol">Peñarol</option>
+                                      <option value="Pocitos">Pocitos</option>
+                                      <option value="Pocitos Nuevo">Pocitos Nuevo</option>
+                                      <option value="Prado">Prado</option>
+                                      <option value="Punta Carretas">Punta Carretas</option>
+                                      <option value="Punta Gorda">Punta Gorda</option>
+                                      <option value="Reducto">Reducto</option>
+                                      <option value="Tres Cruces">Tres Cruces</option>
+                                      <option value="Unión">Unión</option>
+                                      <option value="Villa Dolores">Villa Dolores</option>
+                                      <option value="Villa Española">Villa Española</option>
+                                      <option value="Villa Muñoz">Villa Muñoz</option>
+                                    </select>
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={formData.state}
+                                      onChange={(e) => updateFormData("state", e.target.value)}
+                                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 ${
+                                        formErrors.state ? "border-red-500" : "border-gray-300"
+                                      }`}
+                                      placeholder="Ingresa la localidad"
+                                    />
+                                  )}
+                                  {formErrors.state && (
+                                    <p className="text-red-500 text-sm mt-1">{formErrors.state}</p>
+                                  )}
+                                </div>
+
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Código Postal *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={formData.zipCode}
+                                    onChange={(e) => updateFormData("zipCode", e.target.value)}
+                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-glow-500 ${
+                                      formErrors.zipCode ? "border-red-500" : "border-gray-300"
+                                    }`}
+                                    placeholder="11800"
+                                  />
+                                  {formErrors.zipCode && (
+                                    <p className="text-red-500 text-sm mt-1">{formErrors.zipCode}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+
+                          {/* Pickup Information */}
+                          {formData.deliveryMethod === "pickup" && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.3 }}
+                              className="bg-purple-50 p-4 rounded-lg border border-purple-200"
+                            >
+                              <div className="flex items-start gap-3">
+                                <MapPin className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <h4 className="font-medium text-purple-900">Retiro en Domicilio</h4>
+                                  <p className="text-sm text-purple-700 mt-1">
+                                    Una vez confirmado tu pedido, nos pondremos en contacto contigo para coordinar 
+                                    el día y horario de retiro. El retiro es sin costo adicional.
+                                  </p>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
 
                           <div className="bg-blue-50 p-4 rounded-lg">
                             <div className="flex items-start gap-3">
@@ -766,7 +923,7 @@ export default function CheckoutPage() {
                                   name="paymentMethod"
                                   value="card"
                                   checked={formData.paymentMethod === "card"}
-                                  onChange={(e) => updateFormData("paymentMethod", e.target.value as "card" | "mercadopago")}
+                                  onChange={(e) => updateFormData("paymentMethod", e.target.value as "card" | "mercadopago" | "cash")}
                                   className="sr-only"
                                 />
                                 <CreditCard className="h-6 w-6 text-glow-600 mr-3" />
@@ -794,7 +951,7 @@ export default function CheckoutPage() {
                                   name="paymentMethod"
                                   value="mercadopago"
                                   checked={formData.paymentMethod === "mercadopago"}
-                                  onChange={(e) => updateFormData("paymentMethod", e.target.value as "card" | "mercadopago")}
+                                  onChange={(e) => updateFormData("paymentMethod", e.target.value as "card" | "mercadopago" | "cash")}
                                   className="sr-only"
                                 />
                                 <DollarSign className="h-6 w-6 text-blue-600 mr-3" />
@@ -806,6 +963,41 @@ export default function CheckoutPage() {
                                   <Check className="absolute top-2 right-2 h-5 w-5 text-glow-600" />
                                 )}
                               </motion.label>
+
+                              {/* Cash Payment Option - Only show if pickup delivery method */}
+                              {formData.deliveryMethod === "pickup" && (
+                                <motion.label
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: "auto" }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                    formData.paymentMethod === "cash"
+                                      ? "border-glow-500 bg-glow-50"
+                                      : "border-gray-200 hover:border-gray-300"
+                                  }`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="paymentMethod"
+                                    value="cash"
+                                    checked={formData.paymentMethod === "cash"}
+                                    onChange={(e) => updateFormData("paymentMethod", e.target.value as "card" | "mercadopago" | "cash")}
+                                    className="sr-only"
+                                  />
+                                  <svg className="h-6 w-6 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                  </svg>
+                                  <div>
+                                    <p className="font-medium text-gray-900">Pagar en persona</p>
+                                    <p className="text-sm text-gray-600">Efectivo al momento del retiro</p>
+                                  </div>
+                                  {formData.paymentMethod === "cash" && (
+                                    <Check className="absolute top-2 right-2 h-5 w-5 text-glow-600" />
+                                  )}
+                                </motion.label>
+                              )}
                             </div>
                           </div>
 
@@ -917,6 +1109,32 @@ export default function CheckoutPage() {
                             </motion.div>
                           )}
 
+                          {/* Cash Payment Info */}
+                          {formData.paymentMethod === "cash" && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              transition={{ duration: 0.3 }}
+                              className="bg-green-50 p-4 rounded-lg border border-green-200"
+                            >
+                              <div className="flex items-start gap-3">
+                                <svg className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                <div>
+                                  <h4 className="font-medium text-green-900">Pago en Efectivo al Retirar</h4>
+                                  <p className="text-sm text-green-700 mt-1">
+                                    Podrás pagar en efectivo cuando retires tu pedido en nuestro domicilio. 
+                                    Por favor, trae el monto exacto de <span className="font-semibold">${total.toFixed(2)}</span> para facilitar la transacción.
+                                  </p>
+                                  <p className="text-sm text-green-700 mt-2">
+                                    📱 Te contactaremos para coordinar el día y horario del retiro.
+                                  </p>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+
                           <div className="flex items-center">
                             <input
                               type="checkbox"
@@ -1008,7 +1226,9 @@ export default function CheckoutPage() {
                             <p className="text-sm text-gray-600">
                               {formData.paymentMethod === "card" 
                                 ? `Tarjeta terminada en ${formData.cardNumber.slice(-4)}`
-                                : "Mercado Pago"
+                                : formData.paymentMethod === "mercadopago"
+                                ? "Mercado Pago"
+                                : "Pago en efectivo al retirar"
                               }
                             </p>
                           </div>
@@ -1137,8 +1357,14 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Envío</span>
                     <span className="font-semibold">
-                      {shipping === 0 ? (
-                        <span className="text-green-600 font-semibold">Gratis</span>
+                      {formData.deliveryMethod === "pickup" ? (
+                        <span className="text-green-600 font-semibold">Gratis (Retiro)</span>
+                      ) : formData.city === "Otro" ? (
+                        <span className="text-amber-600 text-xs">
+                          $250 (se paga en destino)
+                        </span>
+                      ) : shipping === 0 ? (
+                        <span className="text-gray-500">-</span>
                       ) : (
                         <span className="text-gray-900">${shipping.toFixed(2)}</span>
                       )}

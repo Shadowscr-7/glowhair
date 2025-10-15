@@ -124,7 +124,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
       onHoverEnd={() => setIsHovered(false)}
       onClick={handleCardClick}
       className={cn(
-        "group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-glow-100/50 cursor-pointer",
+        "group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-glow-100/50 cursor-pointer flex flex-col h-full",
         className
       )}
     >
@@ -182,7 +182,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
       </motion.button>
 
       {/* Product Image */}
-      <div className="relative h-48 sm:h-56 bg-gradient-to-br from-glow-50 to-glow-100 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+      <div className="relative h-48 sm:h-56 bg-gradient-to-br from-glow-50 to-glow-100 flex items-center justify-center p-4 sm:p-6 overflow-hidden flex-shrink-0">
         <motion.div
           animate={{
             scale: isHovered ? 1.05 : 1,
@@ -248,7 +248,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
       </div>
 
       {/* Product Info */}
-      <div className="p-4 sm:p-6">
+      <div className="p-4 sm:p-6 flex flex-col flex-grow">
         {/* Category */}
         <motion.p
           initial={{ opacity: 0 }}
@@ -266,25 +266,21 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="font-semibold text-sm sm:text-base text-gray-900 mb-2 line-clamp-2 group-hover:text-glow-700 transition-colors duration-200"
+          className="font-semibold text-sm sm:text-base text-gray-900 mb-2 line-clamp-2 min-h-[2.5rem] group-hover:text-glow-700 transition-colors duration-200"
         >
           {product.name}
         </motion.h3>
 
-        {/* Description - Hidden on mobile */}
-        {product.description && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="hidden sm:block text-sm text-gray-600 mb-3 line-clamp-3"
-            title={product.description}
-          >
-            {product.description.length > 150 
-              ? `${product.description.substring(0, 150)}...` 
-              : product.description}
-          </motion.p>
-        )}
+        {/* Description - Always visible with fixed height */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="text-xs sm:text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.5rem]"
+          title={product.description}
+        >
+          {product.description || 'Producto de alta calidad para el cuidado capilar profesional.'}
+        </motion.p>
 
         {/* Rating */}
         <motion.div
@@ -317,7 +313,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="flex items-center justify-between mb-3 sm:mb-0"
+          className="flex items-center justify-between mb-3 sm:mb-0 mt-auto"
         >
           <div className="flex items-center gap-2">
             <span className="text-lg sm:text-xl font-bold text-gray-900">

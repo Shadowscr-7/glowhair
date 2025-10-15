@@ -256,11 +256,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('❌ Error al cerrar sesión:', error.message);
       }
       
+      // Limpiar favoritos
       setFavorites([]);
+      
+      // Limpiar localStorage por si acaso
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('userId');
+        localStorage.removeItem('supabase.auth.token');
+      }
       
       console.log('✅ Sesión cerrada');
       
-      // Actualizar el estado local
+      // Actualizar el estado local INMEDIATAMENTE
       setState({
         user: null,
         session: null,
@@ -269,10 +276,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin: false,
         favorites: [],
       });
+      
+      // Retornar para asegurar que se completó
+      return Promise.resolve();
     } catch (error) {
       console.error("Error in signOut:", error);
-    } finally {
-      setState(prev => ({ ...prev, isLoading: false }));
+      // Aún así limpiar el estado
+      setState({
+        user: null,
+        session: null,
+        isAuthenticated: false,
+        isLoading: false,
+        isAdmin: false,
+        favorites: [],
+      });
+      return Promise.resolve();
     }
   };
 

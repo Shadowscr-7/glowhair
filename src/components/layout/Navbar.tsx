@@ -5,10 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingCart, Search, Menu, X, User, Heart, LogOut, Settings, ChevronDown, Shield, Package } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/NewAuthContext";
 import { useFavorites } from "@/hooks/useFavorites";
+import { handleLogout as performLogout } from "@/lib/auth-helpers";
 import logoKeila from "@/assets/logokeila.png";
 
 const Navbar = () => {
@@ -17,7 +17,6 @@ const Navbar = () => {
   const { state: cartState, toggleCart } = useCart();
   const { state: authState, logout } = useAuth();
   const { count: favoritesCount } = useFavorites();
-  const router = useRouter();
 
   const navItems = [
     { name: "Inicio", href: "/" },
@@ -26,10 +25,12 @@ const Navbar = () => {
   ];
 
   const handleLogout = async () => {
-    await logout();
-    setIsUserMenuOpen(false);
-    setIsMenuOpen(false);
-    router.push('/login');
+    await performLogout(logout, {
+      onBeforeLogout: () => {
+        setIsUserMenuOpen(false);
+        setIsMenuOpen(false);
+      }
+    });
   };
 
   return (

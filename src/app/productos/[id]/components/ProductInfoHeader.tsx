@@ -1,12 +1,36 @@
 import { motion } from "framer-motion";
-import { Star } from "lucide-react";
+import { Star, Truck, Package } from "lucide-react";
 import type { UIProduct } from "../utils/types";
 
 interface ProductInfoHeaderProps {
   product: UIProduct;
 }
 
+const getDeliveryMessage = () => {
+  // Obtener la hora actual en Uruguay (GMT-3)
+  const now = new Date();
+  const uruguayTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Montevideo" }));
+  const currentHour = uruguayTime.getHours();
+  
+  // Si es antes de las 14:00 (2:00 PM), llega hoy
+  if (currentHour < 14) {
+    return {
+      message: "Llega el día de hoy",
+      subMessage: "Si realizas tu pedido antes de las 14:00",
+      color: "green"
+    };
+  } else {
+    return {
+      message: "Llega el día de mañana",
+      subMessage: "Pedido procesado para envío mañana",
+      color: "blue"
+    };
+  }
+};
+
 export const ProductInfoHeader = ({ product }: ProductInfoHeaderProps) => {
+  const deliveryInfo = getDeliveryMessage();
+  
   return (
     <motion.div
       initial={{ opacity: 0, x: 50 }}
@@ -59,9 +83,56 @@ export const ProductInfoHeader = ({ product }: ProductInfoHeaderProps) => {
       </div>
 
       {/* Description */}
-      <p className="text-gray-600 mb-8 leading-relaxed">
+      <p className="text-gray-600 mb-6 leading-relaxed">
         {product.description}
       </p>
+
+      {/* Delivery Information */}
+      <div className={`bg-gradient-to-r ${
+        deliveryInfo.color === 'green' 
+          ? 'from-green-50 to-emerald-50 border-green-200' 
+          : 'from-blue-50 to-cyan-50 border-blue-200'
+      } border-2 rounded-xl p-4 mb-6`}>
+        <div className="flex items-start gap-3">
+          <div className={`p-2 rounded-lg ${
+            deliveryInfo.color === 'green' 
+              ? 'bg-green-500' 
+              : 'bg-blue-500'
+          }`}>
+            <Truck className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <p className={`font-bold text-lg ${
+              deliveryInfo.color === 'green' 
+                ? 'text-green-700' 
+                : 'text-blue-700'
+            }`}>
+              {deliveryInfo.message}
+            </p>
+            <p className="text-sm text-gray-600 mt-1">
+              {deliveryInfo.subMessage}
+            </p>
+          </div>
+        </div>
+        
+        {/* Shipping features */}
+        <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+          <div className="flex items-start gap-2 text-sm text-gray-700">
+            <Package className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">Envío a todo Montevideo: $160</p>
+              <p className="text-gray-600">Canelones: $250</p>
+              <p className="text-gray-600">Otros departamentos: por encomienda (pagan en destino)</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 text-sm text-gray-700">
+            <svg className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span className="font-medium">Retiro en domicilio disponible (sin costo)</span>
+          </div>
+        </div>
+      </div>
     </motion.div>
   );
 };

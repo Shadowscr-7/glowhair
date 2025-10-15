@@ -18,6 +18,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/context/NewAuthContext";
+import { handleLogout as performLogout } from "@/lib/auth-helpers";
 import Navbar from "@/components/layout/Navbar";
 
 interface AdminLayoutProps {
@@ -56,9 +57,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { id: "sistema", label: "Sistema" },
   ];
 
-  const handleLogout = () => {
-    logout();
-    window.location.href = "/";
+  const handleLogout = async () => {
+    await performLogout(logout, {
+      redirectUrl: "/"
+    });
   };
 
   return (
