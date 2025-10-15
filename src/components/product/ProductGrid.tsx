@@ -4,23 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import ProductCard from "./ProductCard";
 import { Loader2, ShoppingBag } from "lucide-react";
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  rating: number;
-  reviewCount: number;
-  image: React.ReactNode;
-  category: string;
-  brand: string;
-  isNew?: boolean;
-  isOnSale?: boolean;
-  description: string;
-  ingredients: string[];
-  hairType: string[];
-}
+import { Product } from "@/types/product";
 
 interface ProductGridProps {
   products: Product[];

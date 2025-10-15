@@ -5,9 +5,9 @@ import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { useState } from "react";
 
 interface Product {
-  category: string;
-  brand: string;
-  hairType: string[];
+  category: string | { id: string; name: string };
+  brand?: string | { id: string; name: string };
+  hair_type?: string[];
   price: number;
 }
 
@@ -44,9 +44,13 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   });
 
   // Extract unique values from products
-  const categories = ["Todos", ...Array.from(new Set(products.map(p => p.category)))];
-  const brands = ["Todas", ...Array.from(new Set(products.map(p => p.brand)))];
-  const hairTypes = ["Todos", ...Array.from(new Set(products.flatMap(p => p.hairType)))];
+  const categories = ["Todos", ...Array.from(new Set(products.map(p => 
+    typeof p.category === 'string' ? p.category : p.category?.name || 'Sin categoría'
+  )))];
+  const brands = ["Todas", ...Array.from(new Set(products.map(p => 
+    typeof p.brand === 'string' ? p.brand : p.brand?.name || 'Sin marca'
+  )))];
+  const hairTypes = ["Todos", ...Array.from(new Set(products.flatMap(p => p.hair_type || [])))];
 
   const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections(prev => ({
@@ -227,7 +231,9 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
               {categories.map(category => {
                 const count = category === "Todos" 
                   ? products.length 
-                  : products.filter(p => p.category === category).length;
+                  : products.filter(p => 
+                      (typeof p.category === 'string' ? p.category : p.category?.name) === category
+                    ).length;
                 return (
                   <RadioOption
                     key={category}
@@ -252,7 +258,9 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
               {brands.map(brand => {
                 const count = brand === "Todas" 
                   ? products.length 
-                  : products.filter(p => p.brand === brand).length;
+                  : products.filter(p => 
+                      (typeof p.brand === 'string' ? p.brand : p.brand?.name) === brand
+                    ).length;
                 return (
                   <RadioOption
                     key={brand}
@@ -277,7 +285,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
               {hairTypes.map(hairType => {
                 const count = hairType === "Todos" 
                   ? products.length 
-                  : products.filter(p => p.hairType.includes(hairType)).length;
+                  : products.filter(p => p.hair_type?.includes(hairType)).length;
                 return (
                   <RadioOption
                     key={hairType}
