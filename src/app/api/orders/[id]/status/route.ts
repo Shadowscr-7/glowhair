@@ -59,19 +59,27 @@ export async function PATCH(
     const orderDetails = await orderService.getOrderById(id);
     
     // Send email notification about status change (non-blocking)
-    if (orderDetails.success && orderDetails.data?.shipping_address?.email) {
-      const customerName = orderDetails.data.shipping_address.firstName && orderDetails.data.shipping_address.lastName
-        ? `${orderDetails.data.shipping_address.firstName} ${orderDetails.data.shipping_address.lastName}`
-        : 'Cliente';
+    if (orderDetails.success && orderDetails.data?.shipping_address) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const address = orderDetails.data.shipping_address as any;
+      const customerEmail = address.email || address.Email;
+      const firstName = address.firstName || address.first_name;
+      const lastName = address.lastName || address.last_name;
       
-      emailService.sendOrderStatusUpdate(
-        id,
-        orderDetails.data.shipping_address.email,
-        customerName,
-        status
-      ).catch(err => {
-        console.error("Error sending status update email:", err);
-      });
+      if (customerEmail) {
+        const customerName = firstName && lastName
+          ? `${firstName} ${lastName}`
+          : 'Cliente';
+        
+        emailService.sendOrderStatusUpdate(
+          id,
+          customerEmail,
+          customerName,
+          status
+        ).catch(err => {
+          console.error("Error sending status update email:", err);
+        });
+      }
     }
 
     console.log('✅ Estado actualizado exitosamente');

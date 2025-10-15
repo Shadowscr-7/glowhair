@@ -189,17 +189,20 @@ export default function OrderDetailPage() {
   const calculateSubtotal = () => {
     if (!order || !order.items) return 0;
     return order.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
+      (sum, item) => sum + item.unit_price * item.quantity,
       0
     );
   };
 
   // Función para descargar factura
   const handleDownloadInvoice = () => {
-    if (!order) return;
+    if (!order || !order.payment_method) {
+      alert('No se puede generar la factura para este pedido.');
+      return;
+    }
     
     try {
-      generateInvoicePDF(order);
+      generateInvoicePDF(order as never);
     } catch (error) {
       console.error('Error al generar factura:', error);
       alert('Error al generar la factura. Por favor, inténtelo de nuevo.');
@@ -258,7 +261,7 @@ export default function OrderDetailPage() {
   const statusInfo = statusConfig[order.status];
   const StatusIcon = statusInfo.icon;
   const subtotal = calculateSubtotal();
-  const shipping = order.total - subtotal > 0 ? order.total - subtotal : 0;
+  const shipping = order.shipping_amount || 0;
 
   return (
     <>
@@ -336,7 +339,7 @@ export default function OrderDetailPage() {
                   >
                     <div className="w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0">
                       <Image
-                        src={item.product?.images?.[0] || item.product_image || "/placeholder.png"}
+                        src={item.product?.images?.[0] || item.product?.image_url || item.product_image || "/placeholder.png"}
                         alt={item.product?.name || item.product_name || "Producto"}
                         width={80}
                         height={80}
@@ -345,7 +348,7 @@ export default function OrderDetailPage() {
                     </div>
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-800 mb-1">
-                        {item.product?.name || item.product_name || "Producto"}
+                        {item.product?.name || item.product_name}
                       </h3>
                       <p className="text-sm text-gray-600">
                         Cantidad: {item.quantity}
@@ -365,14 +368,14 @@ export default function OrderDetailPage() {
             </div>
 
             {/* Notes */}
-            {order.notes && (
+            {order.customer_notes && (
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                   <FileText className="w-5 h-5" />
                   Notas del pedido
                 </h2>
                 <p className="text-gray-700 text-sm whitespace-pre-wrap">
-                  {order.notes}
+                  {order.customer_notes}
                 </p>
               </div>
             )}
@@ -409,19 +412,21 @@ export default function OrderDetailPage() {
               </h2>
               <div className="text-gray-700 text-sm space-y-1">
                 <p className="font-medium">
-                  {order.shipping_address.firstName} {order.shipping_address.lastName}
+                  {order.shipping_address.first_name} {order.shipping_address.last_name}
                 </p>
-                <p>{order.shipping_address.address}</p>
+                <p>{order.shipping_address.address_line1}</p>
+                {order.shipping_address.address_line2 && (
+                  <p>{order.shipping_address.address_line2}</p>
+                )}
                 <p>
-                  {order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.zipCode}
+                  {order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.postal_code}
                 </p>
                 <p>{order.shipping_address.country}</p>
-                <p className="text-gray-600">
-                  Tel: {order.shipping_address.phone}
-                </p>
-                <p className="text-gray-600">
-                  Email: {order.shipping_address.email}
-                </p>
+                {order.shipping_address.phone && (
+                  <p className="text-gray-600">
+                    Tel: {order.shipping_address.phone}
+                  </p>
+                )}
               </div>
             </div>
 

@@ -64,8 +64,13 @@ export default function OrderCard({ order }: OrderCardProps) {
     e.preventDefault();
     e.stopPropagation();
     
+    if (!order.payment_method) {
+      alert('No se puede generar la factura para este pedido.');
+      return;
+    }
+    
     try {
-      generateInvoicePDF(order);
+      generateInvoicePDF(order as never);
     } catch (error) {
       console.error('Error al generar factura:', error);
       alert('Error al generar la factura. Por favor, inténtelo de nuevo.');

@@ -89,7 +89,6 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const userId = request.headers.get('x-user-id');
 
     // Cancelar usando el servicio
     const result = await orderService.cancelOrder(id);

@@ -680,11 +680,11 @@ const OrdersPage = () => {
                   <div className="space-y-3">
                     {selectedOrder.items?.map((item) => (
                       <div key={item.id} className="flex items-center gap-4 bg-white p-3 rounded-lg">
-                        {item.product?.images?.[0] || item.product_image ? (
+                        {item.product?.images?.[0] || item.product?.image_url ? (
                           <div className="relative w-16 h-16">
                             <Image
-                              src={item.product?.images?.[0] || item.product_image || ''}
-                              alt={item.product_name || ''}
+                              src={item.product?.images?.[0] || item.product?.image_url || ''}
+                              alt={item.product?.name || 'Producto'}
                               fill
                               sizes="64px"
                               className="object-cover rounded-lg"
@@ -696,12 +696,12 @@ const OrdersPage = () => {
                           </div>
                         )}
                         <div className="flex-1">
-                          <p className="font-medium text-gray-900">{item.product_name}</p>
+                          <p className="font-medium text-gray-900">{item.product?.name || 'Producto'}</p>
                           <p className="text-sm text-gray-600">Cantidad: {item.quantity}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-medium text-gray-900">${item.unit_price.toFixed(2)}</p>
-                          <p className="text-sm text-gray-600">Total: ${item.total_price.toFixed(2)}</p>
+                          <p className="font-medium text-gray-900">${item.price.toFixed(2)}</p>
+                          <p className="text-sm text-gray-600">Total: ${(item.price * item.quantity).toFixed(2)}</p>
                         </div>
                       </div>
                     ))}
@@ -721,11 +721,11 @@ const OrdersPage = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Impuestos:</span>
-                      <span className="font-medium text-gray-900">${selectedOrder.tax_amount.toFixed(2)}</span>
+                      <span className="font-medium text-gray-900">${(selectedOrder.tax || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Envío:</span>
-                      <span className="font-medium text-gray-900">${selectedOrder.shipping_amount.toFixed(2)}</span>
+                      <span className="font-medium text-gray-900">${(selectedOrder.shipping || 0).toFixed(2)}</span>
                     </div>
                     <div className="border-t pt-2 flex justify-between">
                       <span className="font-bold text-gray-900 text-lg">Total:</span>
