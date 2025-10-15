@@ -1,25 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { MercadoPagoConfig, Payment } from 'mercadopago';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * POST /api/mercadopago/webhook
  * Recibir notificaciones de Mercado Pago sobre cambios en el estado del pago
- * 
- * Mercado Pago enviará notificaciones cuando:
- * - Se apruebe un pago
- * - Se rechace un pago
- * - El pago quede pendiente
- * - Se haga un reembolso
- * 
- * Documentación: https://www.mercadopago.com.uy/developers/es/docs/your-integrations/notifications/webhooks
  */
 
 interface MercadoPagoNotification {
-  id: number;
-  live_mode: boolean;
+  id?: number;
+  live_mode?: boolean;
   type: 'payment' | 'plan' | 'subscription' | 'point_integration_wh';
-  date_created: string;
-  user_id: string;
-  api_version: string;
+  date_created?: string;
+  user_id?: string;
+  api_version?: string;
   action: string;
   data: {
     id: string;
@@ -41,70 +35,105 @@ export async function POST(request: NextRequest) {
     const paymentId = notification.data.id;
     console.log('💳 Payment ID:', paymentId);
 
-    // ============================================
-    // PRODUCCIÓN (Descomentar cuando tengas las credenciales)
-    // ============================================
-    /*
-    const mercadopago = require('mercadopago');
-    
-    // Configurar credenciales
-    mercadopago.configure({
-      access_token: process.env.MERCADOPAGO_ACCESS_TOKEN
+    // Validar credenciales
+    if (!process.env.MERCADOPAGO_ACCESS_TOKEN) {
+      console.error('❌ MERCADOPAGO_ACCESS_TOKEN no configurado');
+      return NextResponse.json({ status: 'error' }, { status: 500 });
+    }
+
+    // Configurar cliente de Mercado Pago
+    const client = new MercadoPagoConfig({
+      accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
+      options: { timeout: 5000 }
     });
 
+    const payment = new Payment(client);
+
     // Obtener información del pago
-    const payment = await mercadopago.payment.findById(paymentId);
+    const paymentInfo = await payment.get({ id: paymentId });
     
     console.log('📊 Estado del pago:', {
-      id: payment.body.id,
-      status: payment.body.status,
-      status_detail: payment.body.status_detail,
-      external_reference: payment.body.external_reference,
-      transaction_amount: payment.body.transaction_amount
+      id: paymentInfo.id,
+      status: paymentInfo.status,
+      status_detail: paymentInfo.status_detail,
+      external_reference: paymentInfo.external_reference,
+      transaction_amount: paymentInfo.transaction_amount
     });
 
     // Actualizar el pedido en la base de datos según el estado
-    const orderId = payment.body.external_reference;
+    const orderId = paymentInfo.external_reference;
     
-    switch (payment.body.status) {
+    if (!orderId) {
+      console.error('❌ No se encontró external_reference en el pago');
+      return NextResponse.json({ status: 'error' }, { status: 400 });
+    }
+
+    // Inicializar Supabase
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // Actualizar estado del pedido según el estado del pago
+    let newStatus: string;
+    let paymentStatus: string;
+
+    switch (paymentInfo.status) {
       case 'approved':
-        // Pago aprobado - marcar pedido como pagado
+        newStatus = 'processing';
+        paymentStatus = 'paid';
         console.log('✅ Pago aprobado para pedido:', orderId);
-        // TODO: await ordersAPI.updateStatus(orderId, 'paid');
-        // TODO: Enviar email de confirmación
         break;
         
       case 'pending':
-        // Pago pendiente
+      case 'in_process':
+        newStatus = 'pending';
+        paymentStatus = 'pending';
         console.log('⏳ Pago pendiente para pedido:', orderId);
-        // TODO: await ordersAPI.updateStatus(orderId, 'pending_payment');
         break;
         
       case 'rejected':
-        // Pago rechazado
+        newStatus = 'cancelled';
+        paymentStatus = 'failed';
         console.log('❌ Pago rechazado para pedido:', orderId);
-        // TODO: await ordersAPI.updateStatus(orderId, 'payment_failed');
-        // TODO: Enviar email notificando el rechazo
         break;
         
       case 'refunded':
-        // Pago reembolsado
+        newStatus = 'refunded';
+        paymentStatus = 'refunded';
         console.log('↩️ Pago reembolsado para pedido:', orderId);
-        // TODO: await ordersAPI.updateStatus(orderId, 'refunded');
         break;
         
       case 'cancelled':
-        // Pago cancelado
+        newStatus = 'cancelled';
+        paymentStatus = 'failed';
         console.log('🚫 Pago cancelado para pedido:', orderId);
-        // TODO: await ordersAPI.updateStatus(orderId, 'cancelled');
         break;
+        
+      default:
+        console.log('⚠️ Estado de pago desconocido:', paymentInfo.status);
+        return NextResponse.json({ status: 'unknown_status' }, { status: 200 });
     }
-    */
 
-    // Por ahora, solo loggeamos
-    console.log('ℹ️ Webhook procesado (modo simulación)');
+    // Actualizar pedido en Supabase
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update({
+        status: newStatus,
+        payment_status: paymentStatus,
+        payment_provider_id: paymentInfo.id?.toString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', orderId);
 
-    return NextResponse.json({ status: 'received' }, { status: 200 });
+    if (updateError) {
+      console.error('❌ Error al actualizar pedido:', updateError);
+      return NextResponse.json({ status: 'error' }, { status: 500 });
+    }
+
+    console.log('✅ Pedido actualizado correctamente');
+
+    return NextResponse.json({ status: 'processed' }, { status: 200 });
 
   } catch (error) {
     console.error('❌ Error al procesar webhook de Mercado Pago:', error);

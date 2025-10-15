@@ -300,16 +300,70 @@ export default function CheckoutPage() {
         return;
       }
       
-      // Simular procesamiento (en el futuro aquí iría Mercado Pago)
+      // Integración con Mercado Pago
+      if (formData.paymentMethod === "mercadopago") {
+        try {
+          console.log('🟢 Creando preferencia de Mercado Pago...');
+          
+          // Preparar datos para Mercado Pago
+          const mpItems = state.items.map(item => ({
+            id: item.id,
+            title: item.name,
+            quantity: item.quantity,
+            unit_price: item.price,
+            currency_id: 'UYU'
+          }));
+
+          const mpPayer = {
+            name: formData.firstName,
+            surname: formData.lastName,
+            email: formData.email,
+            phone: {
+              number: formData.phone
+            },
+            address: {
+              street_name: formData.address,
+              zip_code: formData.zipCode
+            }
+          };
+
+          // Llamar a la API para crear la preferencia
+          const response = await fetch('/api/mercadopago/create-preference', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              orderId: order.id,
+              items: mpItems,
+              payer: mpPayer,
+              totalAmount: total
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Error al crear preferencia de Mercado Pago');
+          }
+
+          const preferenceData = await response.json();
+          console.log('✅ Preferencia creada:', preferenceData);
+
+          // Redirigir a Mercado Pago
+          window.location.href = preferenceData.init_point;
+          
+          return;
+        } catch (mpError) {
+          console.error('❌ Error con Mercado Pago:', mpError);
+          setIsProcessing(false);
+          alert('Error al procesar el pago con Mercado Pago. Por favor, intenta nuevamente.');
+          return;
+        }
+      }
+      
+      // Para tarjeta (método futuro)
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // TODO: Integración con Mercado Pago
-      // if (formData.paymentMethod === "mercadopago") {
-      //   // Redirigir a Mercado Pago
-      //   window.location.href = mercadoPagoUrl;
-      // }
-      
-      // Por ahora, mostrar éxito inmediatamente
+      // Por ahora, mostrar éxito inmediatamente para tarjeta
       setIsProcessing(false);
       setShowSuccess(true);
       

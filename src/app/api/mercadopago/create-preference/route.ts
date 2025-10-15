@@ -1,44 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { MercadoPagoConfig, Preference } from 'mercadopago';
 
 /**
  * POST /api/mercadopago/create-preference
  * Crear preferencia de pago en Mercado Pago
- * 
- * IMPORTANTE: Para usar en producción, debes:
- * 1. Instalar el SDK: npm install mercadopago
- * 2. Configurar las credenciales en variables de entorno:
- *    - MERCADOPAGO_ACCESS_TOKEN (Production o Test)
- * 3. Descomentar el código real y eliminar la simulación
  */
 
 interface MercadoPagoItem {
+  id?: string;
   title: string;
   quantity: number;
   unit_price: number;
-  currency_id: string;
+  currency_id?: string;
 }
 
 interface PayerInfo {
   name: string;
   surname: string;
   email: string;
-  phone: {
+  phone?: {
+    area_code?: string;
     number: string;
   };
-}
-
-interface BackUrls {
-  success: string;
-  failure: string;
-  pending: string;
+  address?: {
+    street_name?: string;
+    street_number?: string;
+    zip_code?: string;
+  };
 }
 
 interface PreferenceRequest {
   orderId: string;
   items: MercadoPagoItem[];
   payer: PayerInfo;
-  back_urls: BackUrls;
-  auto_return: string;
+  totalAmount?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -47,69 +42,76 @@ export async function POST(request: NextRequest) {
 
     console.log('🟢 Creando preferencia de Mercado Pago:', body);
 
-    // ============================================
-    // SIMULACIÓN (DESARROLLO)
-    // ============================================
-    // Retornar URL simulada para testing
-    const simulatedResponse = {
-      id: `pref-${Date.now()}`,
-      init_point: `https://www.mercadopago.com.uy/checkout/v1/redirect?pref_id=simulation-${body.orderId}`,
-      sandbox_init_point: `https://sandbox.mercadopago.com.uy/checkout/v1/redirect?pref_id=simulation-${body.orderId}`,
-      status: 'pending'
-    };
+    // Validar credenciales
+    if (!process.env.MERCADOPAGO_ACCESS_TOKEN) {
+      console.error('❌ MERCADOPAGO_ACCESS_TOKEN no configurado');
+      return NextResponse.json(
+        { error: 'Mercado Pago no está configurado correctamente' },
+        { status: 500 }
+      );
+    }
 
-    return NextResponse.json(simulatedResponse, { status: 200 });
-
-    // ============================================
-    // PRODUCCIÓN (Descomentar cuando tengas las credenciales)
-    // ============================================
-    /*
-    const mercadopago = require('mercadopago');
-    
-    // Configurar credenciales
-    mercadopago.configure({
-      access_token: process.env.MERCADOPAGO_ACCESS_TOKEN
+    // Configurar cliente de Mercado Pago
+    const client = new MercadoPagoConfig({
+      accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
+      options: { timeout: 5000 }
     });
 
-    // Crear preferencia
-    const preference = {
+    const preference = new Preference(client);
+
+    // Obtener base URL
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+                    'http://localhost:3000';
+
+    // Crear preferencia de pago
+    const preferenceData = {
       items: body.items.map(item => ({
+        id: item.id || `item-${Date.now()}`,
         title: item.title,
-        unit_price: item.unit_price,
         quantity: item.quantity,
-        currency_id: item.currency_id || 'UYU' // Peso uruguayo
+        unit_price: item.unit_price,
+        currency_id: item.currency_id || 'UYU', // Peso uruguayo
       })),
       payer: {
         name: body.payer.name,
         surname: body.payer.surname,
         email: body.payer.email,
-        phone: {
-          number: body.payer.phone.number
-        }
+        phone: body.payer.phone ? {
+          area_code: body.payer.phone.area_code || '',
+          number: body.payer.phone.number,
+        } : undefined,
+        address: body.payer.address ? {
+          street_name: body.payer.address.street_name || '',
+          street_number: body.payer.address.street_number || '',
+          zip_code: body.payer.address.zip_code || '',
+        } : undefined,
       },
       back_urls: {
-        success: body.back_urls.success,
-        failure: body.back_urls.failure,
-        pending: body.back_urls.pending
+        success: `${baseUrl}/orders/success?orderId=${body.orderId}`,
+        failure: `${baseUrl}/checkout?error=payment_failed`,
+        pending: `${baseUrl}/orders/pending?orderId=${body.orderId}`,
       },
-      auto_return: body.auto_return || 'approved',
+      auto_return: 'approved' as const,
       external_reference: body.orderId,
       statement_descriptor: 'GLOWHAIR',
-      notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/mercadopago/webhook`,
-      metadata: {
-        order_id: body.orderId
-      }
+      notification_url: `${baseUrl}/api/mercadopago/webhook`,
+      expires: false,
+      payment_methods: {
+        installments: 12, // Permitir hasta 12 cuotas
+      },
     };
 
-    const response = await mercadopago.preferences.create(preference);
-    
+    const response = await preference.create({ body: preferenceData });
+
+    console.log('✅ Preferencia creada:', response.id);
+
     return NextResponse.json({
-      id: response.body.id,
-      init_point: response.body.init_point,
-      sandbox_init_point: response.body.sandbox_init_point,
+      id: response.id,
+      init_point: response.init_point,
+      sandbox_init_point: response.sandbox_init_point,
       status: 'success'
-    }, { status: 200 });
-    */
+    });
 
   } catch (error) {
     console.error('❌ Error al crear preferencia de Mercado Pago:', error);
