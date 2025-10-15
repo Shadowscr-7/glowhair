@@ -92,7 +92,7 @@ const adaptProductForUI = (apiProduct: APIProduct): UIProduct => {
     isNew: isNew(),
     isOnSale: !!apiProduct.original_price && apiProduct.original_price > apiProduct.price,
     description: apiProduct.description || '',
-    stock: apiProduct.stock
+    stock: apiProduct.stock || 0
   };
 };
 
