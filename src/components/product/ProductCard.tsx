@@ -9,23 +9,7 @@ import { useAuth } from "@/context/NewAuthContext";
 import { useFavorites } from "@/hooks/useFavorites";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  rating: number;
-  reviewCount: number;
-  image?: string; // Ahora es string (URL) en lugar de ReactNode
-  imageIcon?: React.ReactNode; // Nuevo: icono de fallback
-  image_url?: string;
-  category: string;
-  brand?: string;
-  isNew?: boolean;
-  isOnSale?: boolean;
-  description?: string;
-}
+import { Product } from "@/types/product";
 
 interface ProductCardProps {
   product: Product;
@@ -40,8 +24,8 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
   const { state: authState } = useAuth();
   const { isFavorite, toggle: toggleFavorite, loading: favoriteLoading } = useFavorites();
 
-  const discountPercentage = product.originalPrice 
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+  const discountPercentage = product.original_price 
+    ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
     : 0;
 
   const isProductFavorite = authState.isAuthenticated && isFavorite(product.id);
@@ -86,9 +70,11 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
     e.stopPropagation();
     setIsAddingToCart(true);
     
-    // Obtener la URL de la imagen (priorizar image_url sobre image)
+    // Obtener la URL de la imagen (priorizar images[0], luego image_url, luego image)
     let imageUrl = "";
-    if (product.image_url && typeof product.image_url === 'string') {
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      imageUrl = product.images[0];
+    } else if (product.image_url && typeof product.image_url === 'string') {
       imageUrl = product.image_url;
     } else if (typeof product.image === 'string') {
       imageUrl = product.image;
@@ -99,10 +85,10 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
       id: product.id,
       name: product.name,
       price: product.price,
-      originalPrice: product.originalPrice,
+      original_price: product.original_price,
       image: imageUrl,
-      category: product.category,
-      brand: product.brand || "GlowHair",
+      category: typeof product.category === 'string' ? product.category : product.category?.name || 'Sin categoría',
+      brand: typeof product.brand === 'string' ? product.brand : product.brand?.name || "GlowHair",
       size: "300ml", // Default size
       inStock: 50 // Default stock
     };
@@ -144,7 +130,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
     >
       {/* Badges */}
       <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
-        {product.isNew && (
+        {product.is_new && (
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -153,7 +139,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
             Nuevo
           </motion.span>
         )}
-        {product.isOnSale && (
+        {product.is_on_sale && (
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -205,10 +191,11 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
           transition={{ duration: 0.3 }}
           className="w-full h-full flex items-center justify-center"
         >
-          {product.image_url ? (
+          {/* Prioridad: images[0] > image_url > fallback */}
+          {(product.images && product.images.length > 0) || product.image_url ? (
             <div className="relative w-full h-full bg-white rounded-lg shadow-sm p-2">
               <Image
-                src={product.image_url}
+                src={product.images?.[0] || product.image_url || ''}
                 alt={product.name}
                 fill
                 className="object-contain rounded-md"
@@ -217,8 +204,10 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
               />
             </div>
           ) : (
-            <div className="w-20 h-20 sm:w-24 sm:h-24">
-              {product.imageIcon || product.image}
+            <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center text-gray-400">
+              {product.image && typeof product.image !== 'string' ? product.image : (
+                <div className="text-center text-sm">Sin imagen</div>
+              )}
             </div>
           )}
         </motion.div>        {/* Quick Actions - Mobile: Always visible, Desktop: On hover */}
@@ -267,7 +256,9 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
           transition={{ delay: 0.1 }}
           className="text-xs sm:text-sm text-glow-600 font-medium mb-1 sm:mb-2"
         >
-          {product.category}
+          {typeof product.category === 'string' 
+            ? product.category 
+            : product.category?.name || 'Sin categoría'}
         </motion.p>
 
         {/* Product Name */}
@@ -286,9 +277,12 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="hidden sm:block text-sm text-gray-600 mb-3 line-clamp-2"
+            className="hidden sm:block text-sm text-gray-600 mb-3 line-clamp-3"
+            title={product.description}
           >
-            {product.description}
+            {product.description.length > 150 
+              ? `${product.description.substring(0, 150)}...` 
+              : product.description}
           </motion.p>
         )}
 
@@ -314,7 +308,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
             ))}
           </div>
           <span className="text-xs sm:text-sm text-gray-600">
-            {product.rating} ({product.reviewCount})
+            {product.rating} ({product.review_count})
           </span>
         </motion.div>
 
@@ -329,9 +323,9 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
             <span className="text-lg sm:text-xl font-bold text-gray-900">
               ${product.price.toFixed(2)}
             </span>
-            {product.originalPrice && (
+            {product.original_price && (
               <span className="text-xs sm:text-sm text-gray-500 line-through">
-                ${product.originalPrice.toFixed(2)}
+                ${product.original_price.toFixed(2)}
               </span>
             )}
           </div>

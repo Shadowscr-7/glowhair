@@ -16,10 +16,13 @@ import {
   AlertCircle,
   Loader2,
   FileText,
+  FileDown,
 } from "lucide-react";
 import Image from "next/image";
-import { ordersAPI, Order } from "@/lib/api";
+import Navbar from "@/components/layout/Navbar";
+import { Order } from "@/types";
 import { useAuth } from "@/context/NewAuthContext";
+import { generateInvoicePDF } from "@/lib/utils/invoiceGenerator";
 
 const statusConfig = {
   pending: {
@@ -57,13 +60,20 @@ const statusConfig = {
     bg: "bg-red-50",
     description: "Este pedido ha sido cancelado",
   },
+  refunded: {
+    icon: XCircle,
+    label: "Reembolsado",
+    color: "text-orange-500",
+    bg: "bg-orange-50",
+    description: "Este pedido ha sido reembolsado",
+  },
 };
 
 export default function OrderDetailPage() {
   const router = useRouter();
   const params = useParams();
   const orderId = params.id as string;
-  useAuth(); // Ensure user is authenticated
+  const { state } = useAuth();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,20 +84,47 @@ export default function OrderDetailPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await ordersAPI.getById(orderId);
+
+      // Obtener userId del contexto de autenticación
+      const userId = state.user?.id;
+      if (!userId) {
+        throw new Error('No se encontró el ID de usuario');
+      }
+
+      console.log('🔵 Fetching order:', orderId, 'for user:', userId);
+
+      const response = await fetch(`/api/orders/${orderId}`, {
+        headers: {
+          'x-user-id': userId,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al cargar el pedido');
+      }
+
+      const data = await response.json();
+      console.log('✅ Order loaded:', data);
+
       setOrder(data);
     } catch (err) {
+      console.error('❌ Error loading order:', err);
       setError(
         err instanceof Error ? err.message : "Error al cargar el pedido"
       );
     } finally {
       setLoading(false);
     }
-  }, [orderId]);
+  }, [orderId, state.user?.id]);
 
   useEffect(() => {
+    if (!state.isAuthenticated || !state.user?.id) {
+      router.push("/login");
+      return;
+    }
     fetchOrderDetail();
-  }, [fetchOrderDetail]);
+  }, [fetchOrderDetail, state.isAuthenticated, state.user?.id, router]);
 
   const handleCancelOrder = async () => {
     if (!order || order.status !== "pending") return;
@@ -102,7 +139,24 @@ export default function OrderDetailPage() {
 
     try {
       setCancelling(true);
-      await ordersAPI.cancel(orderId);
+
+      const userId = state.user?.id;
+      if (!userId) {
+        throw new Error('No se encontró el ID de usuario');
+      }
+
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-id': userId,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al cancelar el pedido');
+      }
+
       // Refresh order data
       await fetchOrderDetail();
     } catch (err) {
@@ -126,9 +180,9 @@ export default function OrderDetailPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-ES", {
+    return new Intl.NumberFormat("es-UY", {
       style: "currency",
-      currency: "EUR",
+      currency: "UYU",
     }).format(amount);
   };
 
@@ -140,46 +194,64 @@ export default function OrderDetailPage() {
     );
   };
 
+  // Función para descargar factura
+  const handleDownloadInvoice = () => {
+    if (!order) return;
+    
+    try {
+      generateInvoicePDF(order);
+    } catch (error) {
+      console.error('Error al generar factura:', error);
+      alert('Error al generar la factura. Por favor, inténtelo de nuevo.');
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-rose-500 mx-auto mb-4" />
-          <p className="text-gray-600">Cargando detalles del pedido...</p>
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-gray-50 pt-24 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-glow-500 mx-auto mb-4" />
+            <p className="text-gray-600">Cargando detalles del pedido...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   // Error state
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            Error al cargar el pedido
-          </h2>
-          <p className="text-gray-600 mb-6">
-            {error || "No se pudo encontrar el pedido"}
-          </p>
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={() => fetchOrderDetail()}
-              className="bg-rose-500 text-white px-6 py-2 rounded-lg hover:bg-rose-600 transition-colors"
-            >
-              Reintentar
-            </button>
-            <button
-              onClick={() => router.push("/orders")}
-              className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              Volver a pedidos
-            </button>
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-gray-50 pt-24 flex items-center justify-center p-4">
+          <div className="max-w-md w-full text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              Error al cargar el pedido
+            </h2>
+            <p className="text-gray-600 mb-6">
+              {error || "No se pudo encontrar el pedido"}
+            </p>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => fetchOrderDetail()}
+                className="bg-glow-500 text-white px-6 py-2 rounded-lg hover:bg-glow-600 transition-colors"
+              >
+                Reintentar
+              </button>
+              <button
+                onClick={() => router.push("/orders")}
+                className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Volver a pedidos
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -189,8 +261,10 @@ export default function OrderDetailPage() {
   const shipping = order.total - subtotal > 0 ? order.total - subtotal : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-5xl mx-auto">
+    <>
+      <Navbar />
+      <div className="min-h-screen bg-gray-50 pt-24 pb-12 px-4">
+        <div className="max-w-5xl mx-auto">
         {/* Back button */}
         <button
           onClick={() => router.push("/orders")}
@@ -202,8 +276,8 @@ export default function OrderDetailPage() {
 
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-start justify-between gap-4 mb-6">
-            <div>
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-6">
+            <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-800 mb-2">
                 Pedido #{order.id.slice(0, 8).toUpperCase()}
               </h1>
@@ -211,13 +285,24 @@ export default function OrderDetailPage() {
                 Realizado el {formatDate(order.created_at)}
               </p>
             </div>
-            <div
-              className={`flex items-center gap-2 px-4 py-2 rounded-full ${statusInfo.bg}`}
-            >
-              <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
-              <span className={`font-medium ${statusInfo.color}`}>
-                {statusInfo.label}
-              </span>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div
+                className={`flex items-center gap-2 px-4 py-2 rounded-full ${statusInfo.bg} whitespace-nowrap`}
+              >
+                <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
+                <span className={`font-medium ${statusInfo.color}`}>
+                  {statusInfo.label}
+                </span>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleDownloadInvoice}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-glow-600 to-glow-500 text-white rounded-lg font-medium hover:from-glow-700 hover:to-glow-600 transition-all duration-200 shadow-sm hover:shadow-md whitespace-nowrap"
+              >
+                <FileDown size={18} />
+                <span>Descargar Factura</span>
+              </motion.button>
             </div>
           </div>
 
@@ -251,8 +336,8 @@ export default function OrderDetailPage() {
                   >
                     <div className="w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0">
                       <Image
-                        src={item.product?.image || "/placeholder.png"}
-                        alt={item.product?.name || "Producto"}
+                        src={item.product?.images?.[0] || item.product_image || "/placeholder.png"}
+                        alt={item.product?.name || item.product_name || "Producto"}
                         width={80}
                         height={80}
                         className="w-full h-full object-cover"
@@ -260,18 +345,18 @@ export default function OrderDetailPage() {
                     </div>
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-800 mb-1">
-                        {item.product?.name || "Producto"}
+                        {item.product?.name || item.product_name || "Producto"}
                       </h3>
                       <p className="text-sm text-gray-600">
                         Cantidad: {item.quantity}
                       </p>
                       <p className="text-sm text-gray-600">
-                        Precio unitario: {formatCurrency(item.price)}
+                        Precio unitario: {formatCurrency(item.unit_price)}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-gray-800">
-                        {formatCurrency(item.price * item.quantity)}
+                        {formatCurrency(item.total_price)}
                       </p>
                     </div>
                   </motion.div>
@@ -322,7 +407,22 @@ export default function OrderDetailPage() {
                 <MapPin className="w-5 h-5" />
                 Dirección de envío
               </h2>
-              <p className="text-gray-700 text-sm">{order.shipping_address}</p>
+              <div className="text-gray-700 text-sm space-y-1">
+                <p className="font-medium">
+                  {order.shipping_address.firstName} {order.shipping_address.lastName}
+                </p>
+                <p>{order.shipping_address.address}</p>
+                <p>
+                  {order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.zipCode}
+                </p>
+                <p>{order.shipping_address.country}</p>
+                <p className="text-gray-600">
+                  Tel: {order.shipping_address.phone}
+                </p>
+                <p className="text-gray-600">
+                  Email: {order.shipping_address.email}
+                </p>
+              </div>
             </div>
 
             {/* Payment method */}
@@ -373,5 +473,6 @@ export default function OrderDetailPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

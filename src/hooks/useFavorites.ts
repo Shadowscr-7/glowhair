@@ -32,9 +32,20 @@ const fetchFavorites = async () => {
     if (!response.ok) throw new Error('Error al obtener favoritos');
 
     const data = await response.json();
+    console.log('📥 Favoritos recibidos del API:', data);
+    
+    // Filtrar favoritos que tengan producto válido
+    const validFavorites = data.filter((fav: { product: { id: string } | null }) => fav.product && fav.product.id);
+    
     const favoriteIds = new Set<string>(
-      data.map((fav: { product: { id: string } }) => fav.product.id)
+      validFavorites.map((fav: { product: { id: string } }) => fav.product.id)
     );
+
+    console.log('✅ Favoritos procesados:', {
+      total: data.length,
+      validos: validFavorites.length,
+      ids: Array.from(favoriteIds)
+    });
 
     favoritesState = {
       favorites: favoriteIds,
@@ -100,14 +111,21 @@ const addFavorite = async (productId: string) => {
     }
 
     const data = await response.json();
-    console.log('✅ Favorito agregado:', data);
+    console.log('✅ Respuesta del servidor:', data);
 
-    // Update local state
-    favoritesState.favorites.add(productId);
+    // El servidor puede devolver 'added' o 'removed' (toggle automático)
+    if (data.action === 'removed') {
+      console.log('🔄 El servidor eliminó el favorito (ya existía)');
+      favoritesState.favorites.delete(productId);
+    } else {
+      console.log('🔄 El servidor agregó el favorito');
+      favoritesState.favorites.add(productId);
+    }
+    
     favoritesState.count = favoritesState.favorites.size;
     notifyListeners();
 
-    return true;
+    return data.action; // 'added' o 'removed'
   } catch (error) {
     console.error('❌ Error adding favorite:', error);
     throw error;
@@ -138,15 +156,12 @@ const removeFavorite = async (productId: string) => {
   }
 };
 
-// Toggle favorite
+// Toggle favorite - ahora solo llama a addFavorite que hace toggle automático
 const toggleFavorite = async (productId: string) => {
-  const isFavorite = favoritesState.favorites.has(productId);
-  
-  if (isFavorite) {
-    await removeFavorite(productId);
-  } else {
-    await addFavorite(productId);
-  }
+  // El endpoint POST /api/favorites ahora hace toggle automático:
+  // - Si existe, lo elimina y devuelve { action: 'removed' }
+  // - Si no existe, lo agrega y devuelve { action: 'added' }
+  return await addFavorite(productId);
 };
 
 // Hook

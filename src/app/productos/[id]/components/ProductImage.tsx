@@ -70,7 +70,7 @@ export const ProductImage = ({ product }: ProductImageProps) => {
       <div className="grid grid-cols-3 gap-4 pt-6 border-t">
         <div className="text-center">
           <Truck className="w-6 h-6 text-rose-500 mx-auto mb-2" />
-          <p className="text-xs text-gray-600">Envío gratis desde €50</p>
+          <p className="text-xs text-gray-600">Envío gratis desde $1500</p>
         </div>
         <div className="text-center">
           <Shield className="w-6 h-6 text-rose-500 mx-auto mb-2" />

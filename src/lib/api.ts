@@ -25,9 +25,10 @@ export async function fetchAPI<T = unknown>(
   const { /* requireAuth = false, requireAdmin = false, */ ...fetchOptions } = options;
 
   // Obtener headers de autenticación
+  // UUID temporal para desarrollo (reemplazar con user.id real en producción)
   const userId = typeof window !== 'undefined' 
-    ? localStorage.getItem('user_id') || 'temp-user-id'
-    : 'temp-user-id';
+    ? localStorage.getItem('user_id') || '00000000-0000-0000-0000-000000000001'
+    : '00000000-0000-0000-0000-000000000001';
   
   const isAdmin = typeof window !== 'undefined'
     ? localStorage.getItem('is_admin') === 'true'
@@ -309,7 +310,7 @@ export const ordersAPI = {
 export interface Favorite {
   id: string;
   created_at: string;
-  product: Product;
+  product: Product | null; // Puede ser null si el producto fue eliminado
 }
 
 export const favoritesAPI = {

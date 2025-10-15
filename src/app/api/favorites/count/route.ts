@@ -7,10 +7,11 @@ import { supabase } from '@/lib/supabase';
  */
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id') || 'temp-user-id';
+    // UUID temporal para desarrollo (reemplazar con auth.uid() en producción)
+    const userId = request.headers.get('x-user-id') || '00000000-0000-0000-0000-000000000001';
 
     const { count, error } = await supabase
-      .from('favorites')
+      .from('glowhair_favorites')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId);
 

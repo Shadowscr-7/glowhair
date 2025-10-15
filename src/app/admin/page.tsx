@@ -63,7 +63,7 @@ const AdminDashboard = () => {
   const stats = [
     {
       name: "Ingresos Totales",
-      value: "€45,231",
+      value: "$1,245,231",
       change: "+20.1%",
       changeType: "increase",
       icon: DollarSign
@@ -282,7 +282,7 @@ const AdminDashboard = () => {
               <div className="p-3 bg-indigo-100 rounded-lg mx-auto w-fit mb-2">
                 <DollarSign className="h-5 w-5 text-indigo-600" />
               </div>
-              <p className="text-lg font-bold text-gray-900">€45,231</p>
+              <p className="text-lg font-bold text-gray-900">$1,245,231</p>
               <p className="text-sm text-gray-500">Ingresos totales</p>
             </div>
             

@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, Search, Menu, X, User, Heart, LogOut, Settings, ChevronDown, Shield } from "lucide-react";
+import { ShoppingCart, Search, Menu, X, User, Heart, LogOut, Settings, ChevronDown, Shield, Package } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/NewAuthContext";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -16,6 +17,7 @@ const Navbar = () => {
   const { state: cartState, toggleCart } = useCart();
   const { state: authState, logout } = useAuth();
   const { count: favoritesCount } = useFavorites();
+  const router = useRouter();
 
   const navItems = [
     { name: "Inicio", href: "/" },
@@ -23,12 +25,19 @@ const Navbar = () => {
     { name: "Contacto", href: "/contacto" },
   ];
 
+  const handleLogout = async () => {
+    await logout();
+    setIsUserMenuOpen(false);
+    setIsMenuOpen(false);
+    router.push('/login');
+  };
+
   return (
     <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-glow-200/30 shadow-lg"
+      className="fixed top-0 left-0 right-0 z-50 bg-white/98 backdrop-blur-xl border-b border-gradient-to-r from-glow-200/30 via-glow-300/40 to-glow-200/30 shadow-xl shadow-glow-500/5"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -150,6 +159,17 @@ const Navbar = () => {
                             Mis Favoritos
                           </motion.button>
                         </Link>
+
+                        <Link href="/orders">
+                          <motion.button
+                            whileHover={{ backgroundColor: "#f3f4f6" }}
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            <Package size={16} className="mr-2" />
+                            Mis Pedidos
+                          </motion.button>
+                        </Link>
                         
                         {/* Admin Menu - Only for admin users */}
                         {authState.user?.role === "admin" && (
@@ -179,10 +199,7 @@ const Navbar = () => {
                         <div className="border-t border-gray-200">
                           <motion.button
                             whileHover={{ backgroundColor: "#fef2f2" }}
-                            onClick={() => {
-                              logout();
-                              setIsUserMenuOpen(false);
-                            }}
+                            onClick={handleLogout}
                             className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                           >
                             <LogOut size={16} className="mr-2" />
@@ -360,6 +377,17 @@ const Navbar = () => {
                       </motion.button>
                     </Link>
 
+                    <Link href="/orders">
+                      <motion.button
+                        whileHover={{ backgroundColor: "#f8fafc" }}
+                        onClick={() => setIsMenuOpen(false)}
+                        className="w-full flex items-center space-x-3 px-3 py-4 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                      >
+                        <Package size={20} />
+                        <span>Mis Pedidos</span>
+                      </motion.button>
+                    </Link>
+
                     {/* Admin Menu - Only for admin users - Mobile */}
                     {authState.user?.role === "admin" && (
                       <Link href="/admin">
@@ -387,10 +415,7 @@ const Navbar = () => {
                     
                     <motion.button
                       whileHover={{ backgroundColor: "#fef2f2" }}
-                      onClick={() => {
-                        logout();
-                        setIsMenuOpen(false);
-                      }}
+                      onClick={handleLogout}
                       className="w-full flex items-center space-x-3 px-3 py-4 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     >
                       <LogOut size={20} />

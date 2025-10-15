@@ -43,12 +43,12 @@ export const ProductInfoHeader = ({ product }: ProductInfoHeaderProps) => {
       <div className="mb-8">
         <div className="flex items-baseline gap-3">
           <span className="text-5xl font-bold text-gray-900">
-            €{product.price.toFixed(2)}
+            ${product.price.toFixed(2)}
           </span>
           {product.originalPrice && (
             <>
               <span className="text-2xl text-gray-400 line-through">
-                €{product.originalPrice.toFixed(2)}
+                ${product.originalPrice.toFixed(2)}
               </span>
               <span className="bg-red-100 text-red-800 text-sm font-medium px-3 py-1 rounded-full">
                 -{Math.round((1 - product.price / product.originalPrice) * 100)}%

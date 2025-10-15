@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { orderService, CreateOrderData } from '@/lib/services/orders';
+import { emailService } from '@/lib/services/email';
 
 /**
  * GET /api/orders
@@ -7,53 +8,74 @@ import { supabase } from '@/lib/supabase';
  */
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔵 GET /api/orders - Inicio');
+    
     const { searchParams } = new URL(request.url);
-    const userId = request.headers.get('x-user-id') || 'temp-user-id';
-    const isAdmin = request.headers.get('x-is-admin') === 'true';
+    const userId = request.headers.get('x-user-id') || searchParams.get('user_id');
+    const isAdmin = request.headers.get('x-is-admin') === 'true' || searchParams.get('is_admin') === 'true';
     
     // Filtros
-    const status = searchParams.get('status');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const status = searchParams.get('status') || undefined;
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
 
-    let query = supabase
-      .from('orders')
-      .select(`
-        *,
-        user:users(id, email, full_name),
-        items:order_items(
-          id,
-          product_id,
-          quantity,
-          price,
-          product:products(id, name, image, slug)
-        )
-      `, { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    console.log('📦 Parámetros:', { userId, isAdmin, status, page, limit });
 
-    // Si no es admin, solo mostrar órdenes del usuario
-    if (!isAdmin) {
-      query = query.eq('user_id', userId);
+    if (isAdmin) {
+      // Admin: obtener todas las órdenes
+      console.log('👑 Usuario admin - obteniendo todas las órdenes');
+      const result = await orderService.getAllOrders({ status, page, limit });
+      
+      console.log('📊 Resultado getAllOrders:', { 
+        success: result.success, 
+        ordersCount: result.data?.orders?.length,
+        total: result.data?.total,
+        error: result.error 
+      });
+      
+      if (!result.success) {
+        console.error('❌ Error en getAllOrders:', result.error);
+        return NextResponse.json(
+          { error: result.error },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        orders: result.data?.orders || [],
+        total: result.data?.total || 0,
+        page,
+        limit
+      });
+    } else if (userId) {
+      // Usuario: obtener solo sus órdenes
+      const result = await orderService.getUserOrders(userId, page, limit);
+      
+      console.log('📦 Resultado getUserOrders:', { success: result.success, error: result.error });
+
+      if (!result.success) {
+        console.error('❌ Error al obtener órdenes del usuario:', result.error);
+        return NextResponse.json(
+          { error: result.error || 'Error al obtener órdenes' },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        orders: result.data?.orders || [],
+        total: result.data?.total || 0,
+        page,
+        limit
+      });
+    } else {
+      console.log('⚠️ No userId ni isAdmin');
+      return NextResponse.json(
+        { error: 'Usuario no autenticado' },
+        { status: 401 }
+      );
     }
-
-    // Filtrar por estado si se proporciona
-    if (status) {
-      query = query.eq('status', status);
-    }
-
-    const { data, error, count } = await query;
-
-    if (error) throw error;
-
-    return NextResponse.json({
-      orders: data || [],
-      total: count || 0,
-      limit,
-      offset
-    });
   } catch (error) {
-    console.error('Error in GET /api/orders:', error);
+    console.error('❌ Error in GET /api/orders:', error);
     return NextResponse.json(
       { error: 'Error al obtener órdenes' },
       { status: 500 }
@@ -63,14 +85,23 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/orders
- * Crear una nueva orden desde el carrito
+ * Crear una nueva orden
  */
 export async function POST(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id') || 'temp-user-id';
+    console.log('🔵 POST /api/orders - Inicio');
+    
     const body = await request.json();
+    console.log('📦 Body recibido:', JSON.stringify(body, null, 2));
 
     // Validar campos requeridos
+    if (!body.user_id) {
+      return NextResponse.json(
+        { error: 'user_id es requerido' },
+        { status: 400 }
+      );
+    }
+
     if (!body.shipping_address) {
       return NextResponse.json(
         { error: 'shipping_address es requerido' },
@@ -78,122 +109,95 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Obtener items del carrito
-    const { data: cartItems, error: cartError } = await supabase
-      .from('cart_items')
-      .select(`
-        quantity,
-        product:products!inner(
-          id,
-          name,
-          price,
-          stock
-        )
-      `)
-      .eq('user_id', userId);
-
-    if (cartError) throw cartError;
-
-    if (!cartItems || cartItems.length === 0) {
+    if (!body.items || body.items.length === 0) {
       return NextResponse.json(
-        { error: 'El carrito está vacío' },
+        { error: 'items es requerido y no puede estar vacío' },
         { status: 400 }
       );
     }
 
-    // Verificar stock de todos los productos
-    for (const item of cartItems) {
-      const product = Array.isArray(item.product) ? item.product[0] : item.product;
-      if (product.stock < item.quantity) {
-        return NextResponse.json(
-          { error: `Stock insuficiente para ${product.name}` },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Calcular totales
-    const subtotal = cartItems.reduce((sum, item) => {
-      const product = Array.isArray(item.product) ? item.product[0] : item.product;
-      return sum + (product.price * item.quantity);
-    }, 0);
-
-    const taxRate = 0.16;
-    const tax = subtotal * taxRate;
-    const shippingCost = subtotal >= 50 ? 0 : 5.99;
-    const total = subtotal + tax + shippingCost;
-
-    // Crear la orden
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        user_id: userId,
-        status: 'pending',
-        subtotal: parseFloat(subtotal.toFixed(2)),
-        tax: parseFloat(tax.toFixed(2)),
-        shipping: parseFloat(shippingCost.toFixed(2)),
-        total: parseFloat(total.toFixed(2)),
-        shipping_address: body.shipping_address,
-        billing_address: body.billing_address || body.shipping_address,
-        payment_method: body.payment_method || 'pending',
-        notes: body.notes || null
-      })
-      .select()
-      .single();
-
-    if (orderError) throw orderError;
-
-    // Crear items de la orden
-    const orderItems = cartItems.map(item => {
-      const product = Array.isArray(item.product) ? item.product[0] : item.product;
-      return {
-        order_id: order.id,
-        product_id: product.id,
+    // Preparar datos de la orden
+    const orderData: CreateOrderData = {
+      user_id: body.user_id,
+      total: parseFloat(body.total),
+      subtotal: parseFloat(body.subtotal),
+      tax: parseFloat(body.tax),
+      shipping: parseFloat(body.shipping),
+      status: body.status || 'pending',
+      payment_method: body.payment_method || 'mercadopago',
+      payment_status: body.payment_status || 'pending',
+      shipping_address: body.shipping_address,
+      items: body.items.map((item: { product_id: string; quantity: number; price: number; product_name?: string }) => ({
+        product_id: item.product_id,
         quantity: item.quantity,
-        price: product.price
-      };
-    });
+        price: parseFloat(item.price.toString()),
+        product_name: item.product_name,
+      })),
+    };
 
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
+    console.log('✅ Datos de orden preparados');
 
-    if (itemsError) throw itemsError;
+    // Crear la orden usando el servicio
+    const result = await orderService.createOrder(orderData);
 
-    // Actualizar stock de productos
-    for (const item of cartItems) {
-      const product = Array.isArray(item.product) ? item.product[0] : item.product;
-      await supabase
-        .from('products')
-        .update({ stock: product.stock - item.quantity })
-        .eq('id', product.id);
+    if (!result.success) {
+      console.error('❌ Error al crear orden:', result.error);
+      return NextResponse.json(
+        { error: result.error },
+        { status: 400 }
+      );
     }
 
-    // Limpiar el carrito
-    await supabase
-      .from('cart_items')
-      .delete()
-      .eq('user_id', userId);
+    console.log('✅ Orden creada exitosamente:', result.data?.id);
 
-    // Obtener orden completa con items
-    const { data: fullOrder } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        items:order_items(
-          id,
-          product_id,
-          quantity,
-          price,
-          product:products(id, name, image, slug)
-        )
-      `)
-      .eq('id', order.id)
-      .single();
+    // Enviar emails de confirmación (no bloqueante)
+    emailService.sendOrderConfirmation({
+      orderId: result.data!.id,
+      customerEmail: body.shipping_address.email,
+      customerName: `${body.shipping_address.firstName} ${body.shipping_address.lastName}`,
+      total: orderData.total,
+      items: orderData.items.map(item => ({
+        name: item.product_name || 'Producto',
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      shippingAddress: {
+        address: body.shipping_address.address,
+        city: body.shipping_address.city,
+        state: body.shipping_address.state,
+        zipCode: body.shipping_address.zipCode,
+        country: body.shipping_address.country,
+      },
+    }).catch(err => console.error('Error enviando email al cliente:', err));
 
-    return NextResponse.json(fullOrder, { status: 201 });
+    // Notificar al admin (no bloqueante)
+    emailService.notifyAdminNewOrder({
+      orderId: result.data!.id,
+      customerEmail: body.shipping_address.email,
+      customerName: `${body.shipping_address.firstName} ${body.shipping_address.lastName}`,
+      total: orderData.total,
+      items: orderData.items.map(item => ({
+        name: item.product_name || 'Producto',
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      shippingAddress: {
+        address: body.shipping_address.address,
+        city: body.shipping_address.city,
+        state: body.shipping_address.state,
+        zipCode: body.shipping_address.zipCode,
+        country: body.shipping_address.country,
+      },
+    }).catch(err => console.error('Error notificando al admin:', err));
+
+    // Retornar la orden creada (ya tiene el formato correcto)
+    return NextResponse.json({
+      success: true,
+      order: result.data,
+      message: 'Orden creada exitosamente'
+    }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/orders:', error);
+    console.error('❌ Error in POST /api/orders:', error);
     return NextResponse.json(
       { error: 'Error al crear orden' },
       { status: 500 }

@@ -157,28 +157,109 @@ export const cartService = {
 // PEDIDOS
 // ==========================================
 
+export interface CreateOrderData {
+  user_id: string;
+  total: number;
+  subtotal: number;
+  tax: number;
+  shipping: number;
+  status?: string;
+  payment_method: string;
+  payment_status?: string;
+  shipping_address: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
+  items: Array<{
+    product_id: string;
+    quantity: number;
+    price: number;
+    product_name?: string;
+    product_image?: string;
+  }>;
+}
+
 export const orderService = {
-  // Crear nuevo pedido
-  async createOrder(orderData: Partial<Order>): Promise<ApiResponse<Order>> {
+  // Crear nuevo pedido con items
+  async createOrder(orderData: CreateOrderData): Promise<ApiResponse<Order>> {
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .insert(orderData)
-        .select('*')
+      console.log('🔵 orderService.createOrder - Inicio', orderData);
+
+      // 1. Crear la orden principal
+      const { data: order, error: orderError } = await supabase
+        .from('glowhair_orders')
+        .insert({
+          user_id: orderData.user_id,
+          total: orderData.total,
+          subtotal: orderData.subtotal,
+          tax_amount: orderData.tax,
+          shipping_amount: orderData.shipping,
+          status: orderData.status || 'pending',
+          payment_method: orderData.payment_method,
+          payment_status: orderData.payment_status || 'pending',
+          shipping_address: orderData.shipping_address,
+        })
+        .select()
         .single();
 
-      if (error) throw error;
+      if (orderError) {
+        console.error('❌ Error al crear orden:', orderError);
+        return {
+          success: false,
+          error: orderError.message,
+        };
+      }
 
-      return { success: true, data };
+      console.log('✅ Orden creada:', order.id);
+
+      // 2. Crear los items de la orden
+      const orderItems = orderData.items.map(item => ({
+        order_id: order.id,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        product_image: item.product_image || null,
+        quantity: item.quantity,
+        unit_price: item.price,
+        total_price: item.price * item.quantity,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('glowhair_order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error('❌ Error al crear items de orden:', itemsError);
+        // Intentar eliminar la orden si falla la creación de items
+        await supabase.from('glowhair_orders').delete().eq('id', order.id);
+        return {
+          success: false,
+          error: 'Error al crear items de la orden',
+        };
+      }
+
+      console.log('✅ Items de orden creados');
+
+      return {
+        success: true,
+        data: order,
+      };
     } catch (error) {
+      console.error('❌ Error en createOrder:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Error al crear pedido'
+        error: error instanceof Error ? error.message : 'Error desconocido',
       };
     }
   },
 
-  // Agregar items al pedido
+  // Agregar items al pedido (método legacy - mantener por compatibilidad)
   async addOrderItems(orderId: string, items: Omit<OrderItem, 'id' | 'order_id' | 'created_at'>[]): Promise<ApiResponse<OrderItem[]>> {
     try {
       const orderItems = items.map(item => ({
@@ -187,7 +268,7 @@ export const orderService = {
       }));
 
       const { data, error } = await supabase
-        .from('order_items')
+        .from('glowhair_order_items')
         .insert(orderItems)
         .select('*');
 
@@ -205,22 +286,29 @@ export const orderService = {
   // Obtener pedidos del usuario
   async getUserOrders(userId: string, page = 1, limit = 10): Promise<ApiResponse<{ orders: Order[], total: number }>> {
     try {
+      console.log('🔵 getUserOrders - Inicio', { userId, page, limit });
+      
       const offset = (page - 1) * limit;
 
       const { data, error, count } = await supabase
-        .from('orders')
+        .from('glowhair_orders')
         .select(`
           *,
-          items:order_items(
+          items:glowhair_order_items(
             *,
-            product:products(id, name, images)
+            product:glowhair_products(id, name, images)
           )
         `, { count: 'exact' })
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error en getUserOrders:', error);
+        throw error;
+      }
+
+      console.log('✅ getUserOrders - Éxito', { ordersCount: data?.length, total: count });
 
       return {
         success: true,
@@ -230,6 +318,7 @@ export const orderService = {
         }
       };
     } catch (error) {
+      console.error('❌ Exception en getUserOrders:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Error al obtener pedidos'
@@ -237,31 +326,109 @@ export const orderService = {
     }
   },
 
+  // Obtener todas las órdenes (admin)
+  async getAllOrders(filters?: {
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<{ orders: Order[]; total: number }>> {
+    try {
+      console.log('🔵 getAllOrders - Inicio', filters);
+      
+      let query = supabase
+        .from('glowhair_orders')
+        .select(`
+          *,
+          items:glowhair_order_items(
+            *,
+            product:glowhair_products(id, name, images)
+          )
+        `, { count: 'exact' });
+
+      // Filtros
+      if (filters?.status) {
+        console.log('🔍 Filtrando por status:', filters.status);
+        query = query.eq('status', filters.status);
+      }
+
+      // Orden
+      query = query.order('created_at', { ascending: false });
+
+      // Paginación
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 20;
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+
+      console.log('📄 Paginación:', { page, limit, from, to });
+      query = query.range(from, to);
+
+      const { data: orders, error, count } = await query;
+      
+      console.log('📊 Query result:', { 
+        ordersCount: orders?.length, 
+        totalCount: count, 
+        hasError: !!error,
+        errorMessage: error?.message 
+      });
+
+      if (error) {
+        console.error('❌ Error al obtener todas las órdenes:', error);
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          orders: orders || [],
+          total: count || 0,
+        },
+      };
+    } catch (error) {
+      console.error('❌ Error en getAllOrders:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido',
+      };
+    }
+  },
+
   // Obtener pedido por ID
   async getOrderById(orderId: string, userId?: string): Promise<ApiResponse<Order>> {
     try {
+      console.log('🔵 getOrderById - Inicio', { orderId, userId });
+      
       let query = supabase
-        .from('orders')
+        .from('glowhair_orders')
         .select(`
           *,
-          items:order_items(
+          items:glowhair_order_items(
             *,
-            product:products(id, name, images)
-          ),
-          status_history:order_status_history(*)
+            product:glowhair_products(id, name, images)
+          )
         `)
         .eq('id', orderId);
 
       if (userId) {
+        console.log('🔒 Filtrando por userId:', userId);
         query = query.eq('user_id', userId);
       }
 
       const { data, error } = await query.single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error en getOrderById:', error);
+        throw error;
+      }
+
+      console.log('✅ getOrderById - Éxito', { hasData: !!data, hasItems: !!data?.items?.length });
 
       return { success: true, data };
     } catch (error) {
+      console.error('❌ Exception en getOrderById:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Pedido no encontrado'
@@ -270,34 +437,26 @@ export const orderService = {
   },
 
   // Actualizar estado del pedido
-  async updateOrderStatus(orderId: string, status: string, notes?: string, updatedBy?: string): Promise<ApiResponse<Order>> {
+  async updateOrderStatus(orderId: string, status: string, paymentStatus?: string): Promise<ApiResponse<Order>> {
     try {
+      const updateData: Record<string, unknown> = { 
+        status,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (paymentStatus) {
+        updateData.payment_status = paymentStatus;
+      }
+
       // Actualizar el pedido
       const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .update({ 
-          status,
-          ...(status === 'shipped' && { shipped_at: new Date().toISOString() }),
-          ...(status === 'delivered' && { delivered_at: new Date().toISOString() }),
-          ...(status === 'cancelled' && { cancelled_at: new Date().toISOString() })
-        })
+        .from('glowhair_orders')
+        .update(updateData)
         .eq('id', orderId)
         .select('*')
         .single();
 
       if (orderError) throw orderError;
-
-      // Agregar al historial de estados
-      const { error: historyError } = await supabase
-        .from('order_status_history')
-        .insert({
-          order_id: orderId,
-          status,
-          notes,
-          created_by: updatedBy
-        });
-
-      if (historyError) throw historyError;
 
       return { success: true, data: order };
     } catch (error) {
@@ -309,9 +468,9 @@ export const orderService = {
   },
 
   // Cancelar pedido
-  async cancelOrder(orderId: string, userId: string, reason?: string): Promise<ApiResponse<Order>> {
+  async cancelOrder(orderId: string, _userId: string, _reason?: string): Promise<ApiResponse<Order>> {
     try {
-      return await this.updateOrderStatus(orderId, 'cancelled', reason, userId);
+      return await this.updateOrderStatus(orderId, 'cancelled');
     } catch (error) {
       return {
         success: false,

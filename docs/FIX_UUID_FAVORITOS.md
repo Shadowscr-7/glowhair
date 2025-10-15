@@ -1,6 +1,30 @@
-# 🔧 Fix UUID en Sistema de Favoritos
+# 🔧 Fix UUID en Sistema de Fa## 📝 Archivos Modificados
 
-## ❌ Problema Encontrado
+1. **src/app/api/favorites/route.ts**
+   - GET endpoint (línea 10)
+   - POST endpoint (línea 93)
+   - DELETE endpoint (línea 192)
+
+2. **src/app/api/favorites/[id]/route.ts**
+   - DELETE endpoint (línea 13)
+
+3. **src/app/api/favorites/count/route.ts** ⭐ NUEVO
+   - GET endpoint (línea 10)
+   - También corregido: `favorites` → `glowhair_favorites`
+
+4. **src/hooks/useFavorites.ts**
+   - fetchFavorites (línea 26)
+   - addFavorite (línea 65)
+   - removeFavorite (línea 123)
+
+5. **src/app/productos/[id]/hooks/useFavorite.ts**
+   - checkFavorite (línea 14)
+   - DELETE request (línea 44)
+   - POST request (línea 57)
+
+6. **src/lib/api.ts** ⭐ NUEVO
+   - fetchAPI helper (línea 29)
+   - Usado por `favoritesAPI.getAll()` y otros métodosblema Encontrado
 
 La tabla `glowhair_favorites` en Supabase tiene `user_id` como tipo **UUID**, pero el código estaba enviando `'temp-user-id'` (string) causando errores de tipo de dato.
 

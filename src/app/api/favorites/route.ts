@@ -49,12 +49,31 @@ export async function GET(request: NextRequest) {
     if (favorites && favorites.length > 0) {
       const productIds = favorites.map(f => f.product_id);
       
+      console.log('🔍 Buscando productos para favoritos:', productIds);
+      
       const { data: products, error: productsError } = await supabase
         .from('glowhair_products')
-        .select('id, name, slug, description, price, original_price, image, stock, is_active')
+        .select('id, name, slug, description, price, original_price, images, stock, is_active')
         .in('id', productIds);
 
-      if (!productsError && products) {
+      console.log('📦 Products result:', { 
+        count: products?.length, 
+        productsError,
+        productIds: products?.map(p => p.id)
+      });
+
+      if (productsError) {
+        console.error('❌ Error al obtener productos:', productsError);
+        // Aunque falle productos, devolver favoritos sin product data
+        const favoritesWithoutProducts = favorites.map(fav => ({
+          id: fav.id,
+          created_at: fav.created_at,
+          product: null
+        }));
+        return NextResponse.json(favoritesWithoutProducts);
+      }
+
+      if (products) {
         // Combinar favoritos con productos
         const favoritesWithProducts = favorites.map(fav => {
           const product = products.find(p => p.id === fav.product_id);
@@ -63,15 +82,21 @@ export async function GET(request: NextRequest) {
             created_at: fav.created_at,
             product: product || null
           };
-        }).filter(f => f.product !== null); // Solo devolver favoritos con productos válidos
+        }); // NO filtrar, devolver todos incluso sin producto
 
-        console.log('✅ Favoritos obtenidos con productos:', favoritesWithProducts.length);
+        console.log('✅ Favoritos obtenidos con productos:', {
+          total: favoritesWithProducts.length,
+          conProducto: favoritesWithProducts.filter(f => f.product !== null).length,
+          sinProducto: favoritesWithProducts.filter(f => f.product === null).length
+        });
+        
         return NextResponse.json(favoritesWithProducts);
       }
     }
 
-    console.log('✅ Favoritos obtenidos:', favorites?.length || 0);
-    return NextResponse.json(favorites || []);
+    // Si no hay favoritos o no se pudieron obtener productos, devolver array vacío
+    console.log('✅ Favoritos obtenidos:', 0);
+    return NextResponse.json([]);
   } catch (error) {
     console.error('❌ Error in GET /api/favorites:', error);
     return NextResponse.json(
@@ -108,27 +133,60 @@ export async function POST(request: NextRequest) {
     console.log('⏩ Saltando verificación de producto para evitar RLS recursion');
     console.log('📌 El constraint FOREIGN KEY verificará la existencia del producto');
 
-    // Verificar si ya está en favoritos
+    // Verificar si ya está en favoritos para hacer TOGGLE
     console.log('🔍 Verificando si ya es favorito...');
-    const { data: existing, error: existingError } = await supabase
+    const { data: existingFavorites, error: existingError } = await supabase
       .from('glowhair_favorites')
       .select('id')
       .eq('user_id', userId)
-      .eq('product_id', body.product_id)
-      .single();
+      .eq('product_id', body.product_id);
 
-    console.log('🔍 Existing check:', { existing, existingError });
+    console.log('🔍 Existing check:', { 
+      count: existingFavorites?.length || 0, 
+      existingError 
+    });
 
-    if (existing) {
-      console.log('⚠️ Ya está en favoritos');
+    if (existingError) {
+      console.error('❌ Error al verificar favorito existente:', existingError);
       return NextResponse.json(
-        { error: 'El producto ya está en favoritos' },
-        { status: 400 }
+        { 
+          error: 'Error al verificar favoritos',
+          details: existingError.message
+        },
+        { status: 500 }
       );
     }
 
-    // Agregar a favoritos
-    console.log('➕ Insertando en glowhair_favorites...');
+    // Si ya existe, ELIMINARLO (toggle off)
+    if (existingFavorites && existingFavorites.length > 0) {
+      console.log('🗑️ Ya está en favoritos, eliminando (toggle off)...');
+      
+      const { error: deleteError } = await supabase
+        .from('glowhair_favorites')
+        .delete()
+        .eq('user_id', userId)
+        .eq('product_id', body.product_id);
+
+      if (deleteError) {
+        console.error('❌ Error al eliminar favorito:', deleteError);
+        return NextResponse.json(
+          { 
+            error: 'Error al eliminar de favoritos',
+            details: deleteError.message
+          },
+          { status: 500 }
+        );
+      }
+
+      console.log('✅ Favorito eliminado exitosamente (toggle off)');
+      return NextResponse.json({
+        action: 'removed',
+        message: 'Producto eliminado de favoritos'
+      }, { status: 200 });
+    }
+
+    // Si NO existe, AGREGARLO (toggle on)
+    console.log('➕ No está en favoritos, agregando (toggle on)...');
     const { data: favorite, error: insertError } = await supabase
       .from('glowhair_favorites')
       .insert({
@@ -155,12 +213,13 @@ export async function POST(request: NextRequest) {
 
     // Respuesta exitosa (sin información del producto para evitar RLS)
     if (favorite) {
-      console.log('✅ Favorito creado exitosamente:', favorite);
+      console.log('✅ Favorito agregado exitosamente (toggle on):', favorite);
       return NextResponse.json({
+        action: 'added',
         id: favorite.id,
         created_at: favorite.created_at,
         product_id: favorite.product_id,
-        message: 'Favorito agregado correctamente'
+        message: 'Producto agregado a favoritos'
       }, { status: 201 });
     }
 

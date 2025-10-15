@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { 
   Package, 
   Users, 
-  Euro, 
+  DollarSign, 
   Eye, 
   Download,
   Clock,
@@ -30,10 +30,49 @@ import {
   StatCard, 
   SalesChart, 
   OrdersChart, 
-  StatusPieChart,
-  generateSampleData 
+  StatusPieChart
 } from "@/components/admin/Charts";
-import { ordersAPI, Order } from "@/lib/api";
+
+interface Order {
+  id: string;
+  user_id: string;
+  total: number;
+  subtotal: number;
+  tax: number;
+  shipping: number;
+  status: string;
+  payment_method: string;
+  payment_status: string;
+  shipping_address: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
+  created_at: string;
+  updated_at: string;
+  items?: Array<{
+    id: string;
+    product_id: string;
+    quantity: number;
+    price: number;
+    product?: {
+      id: string;
+      name: string;
+      images?: string[];
+      image_url?: string;
+    };
+  }>;
+  profile?: {
+    full_name: string;
+    email: string;
+  };
+}
 
 const OrdersPage = () => {
   const { state: authState } = useAuth();
@@ -48,6 +87,16 @@ const OrdersPage = () => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [trackingNumber, setTrackingNumber] = useState('');
+
+  // Stats state
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    totalRevenue: 0,
+    uniqueCustomers: 0,
+    completionRate: 0,
+  });
+  const [salesData, setSalesData] = useState<Array<{ date: string; sales: number; orders: number }>>([]);
+  const [ordersData, setOrdersData] = useState<Array<{ date: string; orders: number; completed: number; cancelled: number }>>([]);
 
   // Filters state
   const [startDate, setStartDate] = useState(() => {
@@ -65,8 +114,37 @@ const OrdersPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await ordersAPI.getAll(statusFilter || undefined, 1000, 0);
-      setOrders(data.orders);
+      
+      console.log('🔵 fetchOrders - Inicio');
+      
+      // Construir URL con parámetros
+      const params = new URLSearchParams({
+        is_admin: 'true',
+        limit: '1000',
+      });
+      
+      if (statusFilter) {
+        params.append('status', statusFilter);
+      }
+      
+      const url = `/api/orders?${params.toString()}`;
+      console.log('🌐 Fetch URL:', url);
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error('Error al cargar pedidos');
+      }
+      
+      const data = await response.json();
+      console.log('📦 Respuesta del API:', {
+        ordersCount: data.orders?.length,
+        total: data.total,
+        firstOrder: data.orders?.[0]
+      });
+      
+      setOrders(data.orders || []);
+      console.log('✅ Estado actualizado con', data.orders?.length || 0, 'órdenes');
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar pedidos");
     } finally {
@@ -74,18 +152,60 @@ const OrdersPage = () => {
     }
   }, [statusFilter]);
 
+  // Fetch statistics from API
+  const fetchStats = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      
+      if (startDate) {
+        params.append('start_date', startDate);
+      }
+      if (endDate) {
+        params.append('end_date', endDate);
+      }
+      
+      const response = await fetch(`/api/orders/stats?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error('Error al cargar estadísticas');
+      }
+      
+      const data = await response.json();
+      
+      setStats({
+        totalOrders: data.totalOrders || 0,
+        totalRevenue: data.totalRevenue || 0,
+        uniqueCustomers: data.uniqueCustomers || 0,
+        completionRate: data.completionRate || 0,
+      });
+      
+      setSalesData(data.salesByDate || []);
+      setOrdersData(data.ordersByDate || []);
+    } catch (err) {
+      console.error('Error al cargar estadísticas:', err);
+    }
+  }, [startDate, endDate]);
+
   // Load orders on mount and when statusFilter changes
   useEffect(() => {
     if (authState.isAuthenticated && authState.user?.role === "admin") {
       fetchOrders();
+      fetchStats();
     }
-  }, [authState, fetchOrders]);
+  }, [authState, fetchOrders, fetchStats]);
+
+  // Reload stats when date range changes
+  useEffect(() => {
+    if (authState.isAuthenticated && authState.user?.role === "admin") {
+      fetchStats();
+    }
+  }, [authState, startDate, endDate, fetchStats]);
 
   // Open status modal
   const openStatusModal = (order: Order) => {
     setSelectedOrder(order);
     setNewStatus(order.status);
-    setTrackingNumber(order.tracking_number || '');
+    setTrackingNumber(''); // Tracking number will be added in future
     setShowStatusModal(true);
   };
 
@@ -103,13 +223,26 @@ const OrdersPage = () => {
     
     try {
       setUpdatingStatus(selectedOrder.id);
-      await ordersAPI.updateStatus(
-        selectedOrder.id, 
-        newStatus, 
-        trackingNumber || undefined
-      );
-      // Refresh orders
+      
+      // Update order status via API
+      const response = await fetch(`/api/orders/${selectedOrder.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          tracking_number: trackingNumber || undefined
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar el estado de la orden');
+      }
+
+      // Refresh orders and stats
       await fetchOrders();
+      await fetchStats();
       closeStatusModal();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Error al actualizar estado");
@@ -138,45 +271,46 @@ const OrdersPage = () => {
 
   // Filter orders
   const filteredOrders = useMemo(() => {
+    console.log('🔍 FILTRADO DE ÓRDENES:', {
+      totalOrders: orders.length,
+      startDate,
+      endDate,
+      statusFilter,
+      searchTerm
+    });
+    
     return orders.filter(order => {
       const orderDate = new Date(order.created_at);
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999); // Include full end date
+      const start = new Date(startDate + 'T00:00:00');
+      const end = new Date(endDate + 'T23:59:59');
       
       const matchesDate = orderDate >= start && orderDate <= end;
+      
+      console.log('📅 Orden:', order.id.slice(0, 8), {
+        orderDate: orderDate.toISOString(),
+        orderDateLocal: orderDate.toLocaleString(),
+        start: start.toISOString(),
+        end: end.toISOString(),
+        matchesDate
+      });
+      
+      const customerName = order.shipping_address?.firstName && order.shipping_address?.lastName
+        ? `${order.shipping_address.firstName} ${order.shipping_address.lastName}`.toLowerCase()
+        : '';
+      const customerEmail = order.shipping_address?.email?.toLowerCase() || '';
+      const orderId = order.id.toLowerCase();
+      const searchLower = searchTerm.toLowerCase();
+      
       const matchesSearch = 
-        (order.user?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-        (order.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-        order.id.toLowerCase().includes(searchTerm.toLowerCase());
+        customerName.includes(searchLower) ||
+        customerEmail.includes(searchLower) ||
+        orderId.includes(searchLower);
+        
       const matchesStatus = !statusFilter || order.status === statusFilter;
       
       return matchesDate && matchesSearch && matchesStatus;
     });
   }, [orders, startDate, endDate, searchTerm, statusFilter]);
-
-  // Calculate statistics
-  const stats = useMemo(() => {
-    const totalOrders = filteredOrders.length;
-    const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.total, 0);
-    const uniqueCustomers = new Set(
-      filteredOrders
-        .map(order => order.user?.email)
-        .filter(email => email)
-    ).size;
-    const completedOrders = filteredOrders.filter(order => order.status === 'delivered').length;
-    const completionRate = totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0;
-
-    return {
-      totalOrders,
-      totalRevenue,
-      uniqueCustomers,
-      completionRate
-    };
-  }, [filteredOrders]);
-
-  // Generate chart data
-  const { salesData, ordersData } = generateSampleData();
 
   // Status options for filter
   const statusOptions = [
@@ -294,6 +428,33 @@ const OrdersPage = () => {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* DEBUG: Mostrar info de órdenes */}
+          <div className="col-span-full bg-yellow-50 border-2 border-yellow-400 p-4 rounded-lg">
+            <h3 className="font-bold text-yellow-900">🔧 DEBUG INFO:</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 text-sm">
+              <div>
+                <strong>Total orders en estado:</strong> {orders.length}
+              </div>
+              <div>
+                <strong>Filtered orders:</strong> {filteredOrders.length}
+              </div>
+              <div>
+                <strong>Start Date:</strong> {startDate}
+              </div>
+              <div>
+                <strong>End Date:</strong> {endDate}
+              </div>
+            </div>
+            {orders.length > 0 && (
+              <div className="mt-2 text-xs text-yellow-800">
+                <strong>Primera orden:</strong> 
+                ID: {orders[0].id.slice(0, 8)}, 
+                Fecha: {new Date(orders[0].created_at).toLocaleString()},
+                Total: ${orders[0].total}
+              </div>
+            )}
+          </div>
+
           <StatCard
             title="Total Pedidos"
             value={stats.totalOrders}
@@ -302,8 +463,8 @@ const OrdersPage = () => {
           />
           <StatCard
             title="Ingresos Totales"
-            value={`€${stats.totalRevenue.toFixed(2)}`}
-            icon={<Euro className="w-6 h-6" />}
+            value={`$${stats.totalRevenue.toFixed(2)}`}
+            icon={<DollarSign className="w-6 h-6" />}
             color="green"
           />
           <StatCard
@@ -409,10 +570,12 @@ const OrdersPage = () => {
                       <td className="py-4 px-6">
                         <div>
                           <p className="font-medium text-gray-900">
-                            {order.user?.full_name || "Cliente sin nombre"}
+                            {order.shipping_address?.firstName && order.shipping_address?.lastName 
+                              ? `${order.shipping_address.firstName} ${order.shipping_address.lastName}`
+                              : "Cliente sin nombre"}
                           </p>
                           <p className="text-sm text-gray-500">
-                            {order.user?.email || "Sin email"}
+                            {order.shipping_address?.email || "Sin email"}
                           </p>
                         </div>
                       </td>
@@ -428,7 +591,7 @@ const OrdersPage = () => {
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="font-medium text-gray-900">€{order.total.toFixed(2)}</span>
+                        <span className="font-medium text-gray-900">${order.total.toFixed(2)}</span>
                       </td>
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-2">
@@ -486,13 +649,15 @@ const OrdersPage = () => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-gray-600">Cliente:</span>
                     <span className="font-medium text-gray-900">
-                      {selectedOrder.user?.full_name || "Sin nombre"}
+                      {selectedOrder.shipping_address?.firstName && selectedOrder.shipping_address?.lastName
+                        ? `${selectedOrder.shipping_address.firstName} ${selectedOrder.shipping_address.lastName}`
+                        : "Sin nombre"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-gray-600">Total:</span>
                     <span className="font-medium text-gray-900">
-                      €{selectedOrder.total.toFixed(2)}
+                      ${selectedOrder.total.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">

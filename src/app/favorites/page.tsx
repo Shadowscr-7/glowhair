@@ -6,6 +6,7 @@ import { Heart, ShoppingCart, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import { favoritesAPI, cartAPI, type Favorite } from "@/lib/api";
+import { useAuth } from "@/context/NewAuthContext";
 
 const FavoritesPage = () => {
   const [favorites, setFavorites] = useState<Favorite[]>([]);
@@ -14,9 +15,8 @@ const FavoritesPage = () => {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [addingToCartId, setAddingToCartId] = useState<string | null>(null);
 
-  // Check if user is logged in
-  const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
-  const isAuthenticated = !!userId;
+  // Get authentication state from context
+  const { isAuthenticated } = useAuth();
 
   // Load favorites on mount
   useEffect(() => {
@@ -209,6 +209,10 @@ const FavoritesPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {favorites.map((favorite, index) => {
               const product = favorite.product;
+              
+              // Skip si el producto no existe (fue eliminado)
+              if (!product) return null;
+              
               const isRemoving = removingId === product.id;
               const isAddingToCart = addingToCartId === product.id;
               const discount = product.original_price 
@@ -225,9 +229,9 @@ const FavoritesPage = () => {
                   className="bg-white rounded-xl shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300"
                 >
                   <div className="relative aspect-square bg-gradient-to-br from-glow-50 to-glow-100">
-                    {product.image ? (
+                    {product.images && product.images.length > 0 ? (
                       <img 
-                        src={product.image} 
+                        src={product.images[0]} 
                         alt={product.name}
                         className="w-full h-full object-cover"
                       />

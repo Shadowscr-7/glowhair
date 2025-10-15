@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import { useCart } from "@/context/CartContext";
-import { ordersAPI } from "@/lib/api";
 import { useAuth } from "@/context/NewAuthContext";
 
 interface FormData {
@@ -74,7 +73,7 @@ export default function CheckoutPage() {
     state: "",
     zipCode: "",
     country: "Uruguay",
-    paymentMethod: "card",
+    paymentMethod: "mercadopago",
     cardNumber: "",
     expiryDate: "",
     cvv: "",
@@ -191,120 +190,95 @@ export default function CheckoutPage() {
     setIsProcessing(true);
     
     try {
-      // Prepare order data
-      const orderData = {
-        shipping_address: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}, ${formData.country}`,
-        billing_address: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}, ${formData.country}`,
-        payment_method: formData.paymentMethod === "card" ? "credit_card" : "mercadopago",
-        notes: `Cliente: ${formData.firstName} ${formData.lastName} | Email: ${formData.email} | Tel: ${formData.phone}`
-      };
-
-      console.log('💳 Procesando pago...', {
+      console.log('💳 Creando orden...', {
         method: formData.paymentMethod,
-        total: total
+        total: totals.total
       });
 
-      // Create order via API
-      const order = await ordersAPI.create(orderData);
-      setOrderId(order.id);
-      
-      if (formData.paymentMethod === "mercadopago") {
-        // ============================================
-        // MERCADO PAGO INTEGRATION
-        // ============================================
-        console.log('🟢 Procesando con Mercado Pago...');
-        
-        // TODO: Implementar integración real con Mercado Pago
-        // 1. Crear preferencia de pago en el backend
-        // 2. Obtener URL de checkout de Mercado Pago
-        // 3. Redirigir al usuario
-        
-        // Por ahora, simulación:
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // En producción, esto sería:
-        // const preference = await fetch('/api/mercadopago/create-preference', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({
-        //     orderId: order.id,
-        //     items: state.items.map(item => ({
-        //       title: item.name,
-        //       quantity: item.quantity,
-        //       unit_price: item.price,
-        //       currency_id: 'UYU' // Peso uruguayo
-        //     })),
-        //     payer: {
-        //       name: formData.firstName,
-        //       surname: formData.lastName,
-        //       email: formData.email,
-        //       phone: { number: formData.phone }
-        //     },
-        //     back_urls: {
-        //       success: `${window.location.origin}/orders/${order.id}?status=success`,
-        //       failure: `${window.location.origin}/checkout?status=failure`,
-        //       pending: `${window.location.origin}/orders/${order.id}?status=pending`
-        //     },
-        //     auto_return: 'approved'
-        //   })
-        // });
-        // const { init_point } = await preference.json();
-        // window.location.href = init_point; // Redirigir a Mercado Pago
-        
-        console.log('✅ Pedido creado, redirigiendo a Mercado Pago...');
-        alert('🟢 En producción, serías redirigido a Mercado Pago para completar el pago.\n\nPor ahora, simulamos el pago exitoso.');
-        
-      } else {
-        // ============================================
-        // CREDIT CARD PAYMENT (SIMULATION)
-        // ============================================
-        console.log('💳 Procesando pago con tarjeta...');
-        
-        // Validar datos de la tarjeta
-        const cardNumber = formData.cardNumber.replace(/\s/g, '');
-        if (cardNumber.length < 15) {
-          throw new Error('Número de tarjeta inválido');
-        }
-        
-        // Simular procesamiento de pago
-        await new Promise(resolve => setTimeout(resolve, 2500));
-        
-        // TODO: En producción, integrar con procesador de pagos:
-        // - Stripe
-        // - dLocal (para Uruguay)
-        // - Mercado Pago Card Token API
-        
-        // Ejemplo con Stripe:
-        // const paymentIntent = await fetch('/api/stripe/create-payment', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({
-        //     amount: Math.round(total * 100), // cents
-        //     currency: 'uyu',
-        //     orderId: order.id,
-        //     paymentMethod: {
-        //       card: {
-        //         number: cardNumber,
-        //         exp_month: formData.expiryDate.split('/')[0],
-        //         exp_year: '20' + formData.expiryDate.split('/')[1],
-        //         cvc: formData.cvv
-        //       }
-        //     }
-        //   })
-        // });
-        
-        console.log('✅ Pago con tarjeta procesado exitosamente');
+      // Obtener el user_id del contexto de autenticación
+      // TODO: Obtener del contexto real de auth
+      const userId = localStorage.getItem('userId') || '00000000-0000-0000-0000-000000000001';
+
+      // Preparar datos de la orden
+      const orderData = {
+        user_id: userId,
+        total: totals.total,
+        subtotal: totals.subtotal,
+        tax: totals.tax,
+        shipping: totals.shipping,
+        status: 'pending',
+        payment_method: formData.paymentMethod === "card" ? "credit_card" : "mercadopago",
+        payment_status: 'pending',
+        shipping_address: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          country: formData.country,
+        },
+        items: state.items.map(item => {
+          // Obtener la imagen del producto
+          let productImage = '';
+          if ('images' in item && Array.isArray(item.images) && item.images.length > 0) {
+            productImage = item.images[0];
+          } else if ('image_url' in item && typeof item.image_url === 'string') {
+            productImage = item.image_url;
+          }
+
+          return {
+            product_id: item.id,
+            quantity: item.quantity,
+            price: item.price,
+            product_name: item.name,
+            product_image: productImage,
+          };
+        }),
+      };
+
+      console.log('📦 Datos de orden:', orderData);
+
+      // Crear orden en la base de datos
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al crear la orden');
       }
+
+      const data = await response.json();
+      const order = data.order || data; // Manejar ambos formatos
+      setOrderId(order.id);
+
+      console.log('✅ Orden creada exitosamente:', order.id);
       
-      // Show success
+      // Simular procesamiento (en el futuro aquí iría Mercado Pago)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // TODO: Integración con Mercado Pago
+      // if (formData.paymentMethod === "mercadopago") {
+      //   // Redirigir a Mercado Pago
+      //   window.location.href = mercadoPagoUrl;
+      // }
+      
+      // Por ahora, mostrar éxito inmediatamente
       setIsProcessing(false);
       setShowSuccess(true);
       
-      // Clear cart and redirect after success
+      // Limpiar carrito y redirigir
       setTimeout(() => {
         clearCart();
-        router.push(`/orders/${order.id}`);
-      }, 3000);
+        router.push(`/orders/success?orderId=${order.id}`);
+      }, 2500);
       
     } catch (error) {
       setIsProcessing(false);
@@ -776,7 +750,8 @@ export default function CheckoutPage() {
                             <label className="block text-sm font-medium text-gray-700 mb-4">
                               Método de Pago
                             </label>
-                            <div className="grid md:grid-cols-2 gap-4">
+                            <div className="grid md:grid-cols-1 gap-4">
+                              {/* OPCIÓN COMENTADA - Tarjeta de Crédito (para implementar más adelante)
                               <motion.label
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
@@ -803,6 +778,7 @@ export default function CheckoutPage() {
                                   <Check className="absolute top-2 right-2 h-5 w-5 text-glow-600" />
                                 )}
                               </motion.label>
+                              */}
 
                               <motion.label
                                 whileHover={{ scale: 1.02 }}
@@ -833,8 +809,8 @@ export default function CheckoutPage() {
                             </div>
                           </div>
 
-                          {/* Card Details (only if card is selected) */}
-                          {formData.paymentMethod === "card" && (
+                          {/* Card Details (only if card is selected) - COMENTADO */}
+                          {false && formData.paymentMethod === "card" && (
                             <motion.div
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: "auto" }}

@@ -7,8 +7,9 @@ export interface Product {
   review_count: number;
   image?: React.ReactNode;
   image_url?: string;
-  category: string;
-  brand?: string;
+  images?: string[];
+  category: string | { id: string; name: string };
+  brand?: string | { id: string; name: string };
   is_new?: boolean;
   is_on_sale?: boolean;
   description: string;

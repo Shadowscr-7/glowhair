@@ -172,6 +172,10 @@ export interface Order {
   // Relaciones
   items?: OrderItem[];
   status_history?: OrderStatusHistory[];
+  profile?: {
+    full_name: string;
+    email: string;
+  };
 }
 
 export interface OrderItem {

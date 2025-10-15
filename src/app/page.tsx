@@ -1,83 +1,36 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/layout/Navbar";
 import ProductCard from "@/components/product/ProductCard";
-import { ShampooIcon, ConditionerIcon, MaskIcon, SerumIcon, OilIcon, SprayIcon } from "@/components/ui/ProductIcons";
 import { ArrowRight, Sparkles, Award, Truck } from "lucide-react";
 import fondowebImage from "@/assets/fondoweb.png";
-
-// Sample products data
-const sampleProducts = [
-  {
-    id: "1",
-    name: "Shampoo Hidratante Premium",
-    price: 29.99,
-    originalPrice: 39.99,
-    rating: 4.8,
-    reviewCount: 124,
-    image: <ShampooIcon className="w-full h-full" />,
-    category: "Limpieza",
-    isNew: true,
-    isOnSale: true,
-    description: "Fórmula avanzada con keratina y aceites naturales para cabello sedoso y brillante."
-  },
-  {
-    id: "2",
-    name: "Acondicionador Reparador",
-    price: 24.99,
-    rating: 4.7,
-    reviewCount: 89,
-    image: <ConditionerIcon className="w-full h-full" />,
-    category: "Tratamiento",
-    description: "Repara y fortalece el cabello dañado con extractos botánicos."
-  },
-  {
-    id: "3",
-    name: "Mascarilla Nutritiva Intensiva",
-    price: 34.99,
-    originalPrice: 44.99,
-    rating: 4.9,
-    reviewCount: 156,
-    image: <MaskIcon className="w-full h-full" />,
-    category: "Tratamiento",
-    isOnSale: true,
-    description: "Tratamiento profundo semanal para cabello extremadamente seco."
-  },
-  {
-    id: "4",
-    name: "Serum Anti-Frizz",
-    price: 19.99,
-    rating: 4.6,
-    reviewCount: 78,
-    image: <SerumIcon className="w-full h-full" />,
-    category: "Estilizado",
-    isNew: true,
-    description: "Control total del frizz y protección térmica hasta 230°C."
-  },
-  {
-    id: "5",
-    name: "Aceite Capilar Nutritivo",
-    price: 27.99,
-    rating: 4.8,
-    reviewCount: 102,
-    image: <OilIcon className="w-full h-full" />,
-    category: "Tratamiento",
-    description: "Mezcla de aceites esenciales para nutrición y brillo natural."
-  },
-  {
-    id: "6",
-    name: "Spray Protector Térmico",
-    price: 22.99,
-    rating: 4.5,
-    reviewCount: 67,
-    image: <SprayIcon className="w-full h-full" />,
-    category: "Protección",
-    description: "Protección profesional contra el calor y rayos UV."
-  }
-];
+import { Product } from "@/types/product";
 
 export default function Home() {
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFeaturedProducts = async () => {
+      try {
+        // Obtener productos destacados (featured) limitados a 6
+        const response = await fetch('/api/products?limit=6&sortBy=featured');
+        const data = await response.json();
+        
+        if (data.products) {
+          setFeaturedProducts(data.products);
+        }
+      } catch (error) {
+        console.error('Error al cargar productos destacados:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeaturedProducts();
+  }, []);
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
@@ -268,19 +221,39 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {sampleProducts.map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1, duration: 0.8 }}
-                viewport={{ once: true }}
-              >
-                <ProductCard product={product} />
-              </motion.div>
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+              {[...Array(6)].map((_, index) => (
+                <div
+                  key={index}
+                  className="bg-white rounded-2xl shadow-lg p-6 animate-pulse"
+                >
+                  <div className="bg-gray-200 h-48 rounded-lg mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                  <div className="h-6 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
+          ) : featuredProducts.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+              {featuredProducts.map((product, index) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1, duration: 0.8 }}
+                  viewport={{ once: true }}
+                >
+                  <ProductCard product={product} />
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">No hay productos destacados disponibles</p>
+            </div>
+          )}
 
           <motion.div
             initial={{ opacity: 0 }}
@@ -289,14 +262,15 @@ export default function Home() {
             viewport={{ once: true }}
             className="text-center mt-8 sm:mt-12 px-4"
           >
-            <motion.button
+            <motion.a
+              href="/productos"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="w-full sm:w-auto bg-gradient-to-r from-glow-600 to-glow-500 text-white px-6 sm:px-8 py-4 rounded-full font-semibold text-base sm:text-lg flex items-center justify-center gap-2 mx-auto hover:from-glow-700 hover:to-glow-600 transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               Ver Todos los Productos
               <ArrowRight className="w-5 h-5" />
-            </motion.button>
+            </motion.a>
           </motion.div>
         </div>
       </section>

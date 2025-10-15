@@ -140,7 +140,7 @@ export const SalesChart = ({ data }: SalesChartProps) => {
         <YAxis />
         <Tooltip 
           formatter={(value, name) => [
-            name === 'sales' ? `€${value}` : value,
+            name === 'sales' ? `$${value}` : value,
             name === 'sales' ? 'Ventas' : 'Pedidos'
           ]}
         />

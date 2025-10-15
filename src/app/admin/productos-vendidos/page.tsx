@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { 
   Package, 
   TrendingUp, 
-  Euro, 
+  DollarSign, 
   Eye, 
   Download,
   Star,
@@ -281,8 +281,8 @@ const ProductsPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <StatCard
             title="Ingresos Totales"
-            value={`€${stats.totalRevenue.toFixed(2)}`}
-            icon={<Euro className="w-6 h-6" />}
+            value={`$${stats.totalRevenue.toFixed(2)}`}
+            icon={<DollarSign className="w-6 h-6" />}
             color="green"
           />
           <StatCard
@@ -293,7 +293,7 @@ const ProductsPage = () => {
           />
           <StatCard
             title="Beneficio Total"
-            value={`€${stats.totalProfit.toFixed(2)}`}
+            value={`$${stats.totalProfit.toFixed(2)}`}
             icon={<TrendingUp className="w-6 h-6" />}
             color="purple"
           />
@@ -317,7 +317,7 @@ const ProductsPage = () => {
           <TrendLineChart 
             data={trendData} 
             title="Tendencia de Ventas (7 días)" 
-            formatter={(value) => `€${value}`}
+            formatter={(value) => `$${value}`}
           />
         </div>
 
@@ -418,7 +418,7 @@ const ProductsPage = () => {
                   {/* Stats Grid */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-glow-600">€{product.revenue.toFixed(0)}</p>
+                      <p className="text-2xl font-bold text-glow-600">${product.revenue.toFixed(0)}</p>
                       <p className="text-xs text-gray-500">Ingresos</p>
                     </div>
                     <div className="text-center">
@@ -436,7 +436,7 @@ const ProductsPage = () => {
                     </div>
                     
                     <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">€{product.profit.toFixed(0)}</p>
+                      <p className="text-sm font-medium text-gray-900">${product.profit.toFixed(0)}</p>
                       <p className="text-xs text-gray-500">Beneficio</p>
                     </div>
                   </div>
